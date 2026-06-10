@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AR Decision Engine — Training Simulator v2</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0d1f3c;--navy2:#1a3456;--navy3:#243d5e;
+  --gold:#c8a951;--gold2:#e2c97e;
+  --red:#7b2d2d;--red2:#a03535;
+  --grn:#16a34a;--grn2:#15803d;
+  --teal:#0d9488;--teal2:#14b8a6;
+  --gray1:#f4f6f9;--gray2:#e8ecf2;--gray3:#c8d0de;
+  --gray4:#8a96aa;--gray5:#5a6478;
+  --bg:#080e1c;--panel:#141f38;
+  --border:rgba(200,169,81,0.15);--border2:rgba(200,169,81,0.3);
+  --text:#e8edf5;--text2:#a8b4c8;--text3:#6a7a94;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;}
+#app{display:flex;flex-direction:column;height:100vh;}
+#body-row{display:flex;flex:1;overflow:hidden;}
+#screen-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+#top-nav{background:rgba(13,31,60,0.97);border-bottom:1px solid var(--border2);display:flex;align-items:center;padding:0 12px;gap:4px;height:46px;flex-shrink:0;overflow-x:auto;}
+#top-nav::-webkit-scrollbar{height:0;}
+.nav-lbl{color:var(--gold);font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-right:6px;white-space:nowrap;}
+.ch-pill{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--text2);font-size:.7rem;font-weight:600;padding:4px 11px;border-radius:18px;cursor:pointer;white-space:nowrap;transition:.18s;}
+.ch-pill:hover{background:rgba(200,169,81,.1);border-color:var(--border2);color:var(--gold2);}
+.ch-pill.on{background:rgba(200,169,81,.18);border-color:var(--gold);color:var(--gold2);}
+#sidebar{width:260px;flex-shrink:0;background:rgba(13,31,60,0.75);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+#sb-head{padding:12px 14px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+#sb-head h3{font-size:.9rem;font-weight:700;color:#fff;margin-bottom:2px;}
+#sb-head p{font-size:.68rem;color:var(--text3);}
+#sb-steps{flex:1;overflow-y:auto;padding:6px;}
+.step-item{display:flex;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;margin-bottom:2px;align-items:flex-start;}
+.step-item:hover{background:rgba(255,255,255,.04);}
+.step-item.active{background:rgba(200,169,81,.1);border-left:2px solid var(--gold);}
+.step-item.done .si-num{background:var(--grn);color:#fff;border-color:var(--grn);}
+.si-num{width:20px;height:20px;min-width:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.58rem;font-weight:700;color:var(--text3);flex-shrink:0;margin-top:1px;}
+.step-item.active .si-num{background:var(--gold);border-color:var(--gold);color:var(--navy);}
+.si-txt{font-size:.71rem;color:var(--text2);line-height:1.45;}
+.step-item.done .si-txt{color:var(--text3);text-decoration:line-through;}
+#sb-coach{background:rgba(6,10,20,.5);border-top:1px solid var(--border);padding:10px 12px;flex-shrink:0;}
+.coach-lbl{font-size:.58rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;}
+.coach-t{font-size:.72rem;color:var(--text2);line-height:1.5;margin-bottom:7px;}
+.coach-a{background:rgba(200,169,81,.1);border:1px solid var(--border2);border-radius:5px;padding:5px 8px;font-size:.7rem;color:var(--gold2);}
+.screen{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.screen.on{display:flex;}
+.ov{display:none;position:absolute;inset:0;background:rgba(3,6,15,.72);z-index:50;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
+.ov.open{display:flex;}
+.dbox{background:linear-gradient(145deg,#141f38,#0d1628);border:1px solid var(--border2);border-radius:12px;padding:20px;min-width:300px;max-width:92vw;max-height:86vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.dtitle{font-size:.95rem;font-weight:700;color:#fff;margin-bottom:9px;}
+.dbody{font-size:.82rem;color:var(--text2);line-height:1.6;margin-bottom:12px;}
+.dbtns{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
+.dbtn{border:none;padding:7px 16px;border-radius:7px;font-size:.8rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.dbtn.gold{background:linear-gradient(135deg,var(--gold),#a8882e);color:var(--navy);}
+.dbtn.grn{background:var(--grn);color:#fff;}
+.dbtn.red{background:var(--red2);color:#fff;}
+.dbtn.sec{background:rgba(255,255,255,.06);color:var(--text2);border:1px solid var(--border);}
+@keyframes pg{0%{box-shadow:0 0 0 0 rgba(200,169,81,.65);}70%{box-shadow:0 0 0 9px rgba(200,169,81,0);}100%{box-shadow:0 0 0 0 rgba(200,169,81,0);}}
+.ring{animation:pg 1.5s infinite;}
+#toast{position:absolute;bottom:64px;left:50%;transform:translateX(-50%);background:rgba(13,31,60,.96);color:var(--gold2);font-size:.76rem;padding:7px 16px;border-radius:18px;z-index:200;display:none;white-space:nowrap;border:1px solid var(--border2);}
+.abar{padding:7px 11px;background:rgba(6,10,20,.85);border-top:1px solid var(--border);display:flex;gap:7px;align-items:center;flex-wrap:wrap;flex-shrink:0;}
+.ibanner{background:rgba(13,148,136,.12);border-left:3px solid var(--teal2);padding:5px 10px;font-size:.76rem;color:var(--text);flex:1;border-radius:0 4px 4px 0;}
+.abtn{border:none;padding:6px 13px;border-radius:7px;font-size:.76rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.15s;}
+.abtn.gold{background:linear-gradient(135deg,var(--gold),#a8882e);color:var(--navy);}
+.abtn.grn{background:var(--grn);color:#fff;}
+.abtn.red{background:var(--red);color:#fff;}
+.abtn.navy{background:var(--navy2);color:#fff;border:1px solid var(--border2);}
+.abtn.dim{background:#1a2035;color:#3a4560;cursor:not-allowed;}
+.gdrive{display:flex;flex-direction:column;flex:1;overflow:hidden;background:#f8f9fa;}
+.gdrive-top{background:#fff;border-bottom:1px solid #e0e0e0;padding:7px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.gdrive-logo{display:flex;align-items:center;gap:5px;font-size:1rem;font-weight:300;color:#5f6368;}
+.gdrive-search{flex:1;background:#f1f3f4;border:none;border-radius:22px;padding:7px 14px;font-size:.83rem;color:#333;max-width:560px;}
+.gdrive-body{display:flex;flex:1;overflow:hidden;}
+.gdrive-sb{width:190px;padding:6px;border-right:1px solid #e0e0e0;background:#fff;flex-shrink:0;}
+.gd-new{background:#fff;border:1px solid #dadce0;border-radius:18px;padding:7px 14px;display:flex;align-items:center;gap:5px;font-size:.8rem;font-weight:500;color:#444;cursor:pointer;margin:6px 4px;box-shadow:0 1px 3px rgba(0,0,0,.1);}
+.gd-sbi{display:flex;align-items:center;gap:7px;padding:5px 9px;border-radius:18px;font-size:.8rem;color:#444;cursor:pointer;}
+.gd-sbi.on{background:#e8f0fe;color:#1967d2;}
+.gdrive-main{flex:1;padding:10px;overflow-y:auto;background:#fff;}
+.gd-sec{font-size:.7rem;color:#5f6368;font-weight:600;padding:7px 8px 3px;text-transform:uppercase;letter-spacing:.06em;}
+.gd-fitem{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:5px;cursor:pointer;}
+.gd-fitem:hover,.gd-fitem.sel{background:#f1f3f4;}
+.gs-wrap{display:flex;flex-direction:column;flex:1;overflow:hidden;background:#fff;}
+.gs-top{background:#fff;border-bottom:1px solid #e8e8e8;padding:3px 9px;display:flex;align-items:center;gap:2px;flex-shrink:0;flex-wrap:wrap;}
+.gs-logo{display:flex;align-items:center;gap:5px;margin-right:7px;}
+.gs-title{font-size:.83rem;font-weight:500;color:#333;}
+.gs-mi{padding:3px 9px;font-size:.76rem;color:#333;cursor:pointer;border-radius:3px;}
+.gs-mi:hover,.gs-mi.hl{background:#e8f0fe;color:#1967d2;}
+.gs-mi.npp{font-weight:700;color:#1a3456;}
+.gs-tabs{background:#f8f9fa;border-top:1px solid #e0e0e0;display:flex;align-items:center;height:26px;padding:0 5px;flex-shrink:0;overflow-x:auto;}
+.gs-tab{font-size:.71rem;padding:0 12px;height:100%;display:flex;align-items:center;color:#555;cursor:pointer;border-radius:3px 3px 0 0;border:1px solid transparent;}
+.gs-tab.on{background:#fff;border-color:#e0e0e0 #e0e0e0 #fff;color:#1967d2;font-weight:600;}
+.gs-tab.hi{color:#a8882e;font-weight:600;}
+.gs-body{flex:1;overflow:auto;}
+.dd{display:none;position:absolute;background:#fff;border:1px solid #e0e0e0;border-radius:9px;min-width:200px;z-index:100;box-shadow:0 7px 24px rgba(0,0,0,.18);padding:4px 0;}
+.dd.open{display:block;}
+.ddi{padding:7px 13px;font-size:.79rem;color:#333;cursor:pointer;}
+.ddi:hover,.ddi.hl{background:#e8f0fe;color:#1967d2;}
+.ddi.sep{height:1px;background:#eee;margin:3px 0;padding:0;}
+.xgrid{min-width:480px;color:#111;}
+.xr{display:flex;border-bottom:1px solid #efefef;min-height:22px;}
+.xr:nth-child(even){background:#fafafa;}
+.xr.hdr{background:#1a3456;font-weight:600;}
+.xr.new-r{background:#e8f5e9;}
+.xr.warn-r{background:#fff8e1;}
+.xc{padding:2px 5px;border-right:1px solid #efefef;font-size:.71rem;white-space:nowrap;overflow:hidden;display:flex;align-items:center;color:#111;}
+.xc.rn{width:24px;background:#f4f4f4;justify-content:center;font-size:.66rem;color:#888;flex-shrink:0;}
+.xc.w80{min-width:80px;}.xc.w100{min-width:100px;}.xc.w120{min-width:120px;}.xc.w150{min-width:150px;}.xc.wf{flex:1;}
+.epic-chrome{background:#7b1212;padding:3px 10px;display:flex;align-items:center;flex-shrink:0;}
+.epic-chrome span{color:#fff;font-size:.74rem;font-weight:600;}
+.epic-wq-bar{background:#fff;border-bottom:1px solid #ddd;padding:5px 10px;display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.epic-wq-bar h2{font-size:.93rem;font-weight:700;color:#111;}
+.epic-toolbar{background:#f5f5f5;border-bottom:1px solid #ddd;display:flex;align-items:center;padding:2px 9px;gap:7px;flex-shrink:0;flex-wrap:wrap;}
+.epic-ebtn{background:#1565c0;color:#fff;font-size:.75rem;font-weight:700;padding:4px 11px;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:4px;position:relative;}
+.epic-hdr{display:flex;background:#dae3f3;border-bottom:1px solid #c0cfe8;font-size:.69rem;font-weight:700;color:#1f4e79;flex-shrink:0;}
+.epic-hdr .hc{padding:3px 7px;border-right:1px solid #c0cfe8;}
+.epic-row{display:flex;font-size:.7rem;border-bottom:1px solid #f0f0f0;cursor:pointer;}
+.epic-row:hover,.epic-row.sel{background:#e3f2fd;}
+.epic-row .ic{padding:3px 7px;border-right:1px solid #f5f5f5;}
+.cr-hdr{background:var(--navy);color:#fff;padding:10px 16px;flex-shrink:0;border-bottom:3px solid var(--gold);}
+.cr-hdr h2{font-size:.95rem;font-weight:700;color:var(--gold2);}
+.cr-hdr p{font-size:.72rem;color:var(--text2);font-style:italic;}
+.cr-body{flex:1;overflow-y:auto;padding:9px 10px;background:#f4f6f9;}
+.cr-sec{background:#fff;border-radius:8px;border:1px solid #e0e8f0;margin-bottom:9px;overflow:hidden;}
+.cr-sec-hdr{padding:7px 12px;font-size:.73rem;font-weight:700;color:#fff;background:var(--navy2);}
+.cr-sec-hdr.grn{background:#2e7d32;}.cr-sec-hdr.red{background:#c62828;}.cr-sec-hdr.gold{background:#a8882e;color:var(--navy);}
+.cr-grid{display:grid;grid-template-columns:1fr 1fr;}
+.cr-cell{padding:7px 12px;border-bottom:1px solid #f0f4f8;border-right:1px solid #f0f4f8;}
+.cr-cell:nth-child(even){border-right:none;}
+.cr-cell-lbl{font-size:.63rem;font-weight:700;color:#8a96aa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+.cr-cell-val{font-size:.8rem;color:#111;font-weight:500;}
+.cr-cell-val.red{color:#c62828;}.cr-cell-val.grn{color:#2e7d32;}.cr-cell-val.gold{color:#a8882e;}
+.cr-full{padding:7px 12px;border-bottom:1px solid #f0f4f8;}
+.cr-full-lbl{font-size:.63rem;font-weight:700;color:#8a96aa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;}
+.cr-full-val{font-size:.78rem;color:#111;line-height:1.6;}
+.tier{display:inline-block;padding:2px 10px;border-radius:10px;font-size:.74rem;font-weight:700;}
+.t1{background:#e8f5e9;color:#2e7d32;}.t2{background:#fff3e0;color:#e65100;}.t3{background:#ffebee;color:#c62828;}
+.cr-btns{display:flex;gap:8px;padding:10px 12px;background:#f8f9fa;border-top:1px solid #e0e8f0;flex-shrink:0;}
+.cr-btn{border:none;padding:8px 16px;border-radius:7px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.cr-btn.navy{background:var(--navy);color:var(--gold);border:2px solid var(--gold);}
+.cr-btn.red{background:var(--red);color:#fff;border:2px solid var(--gold);}
+.cr-btn.gold{background:var(--gold);color:var(--navy);border:2px solid var(--navy);}
+.inv-bar{background:#fff;border-bottom:1px solid #e0e0e0;padding:7px 12px;display:flex;align-items:center;gap:9px;flex-shrink:0;}
+.inv-bar-lbl{font-size:.73rem;font-weight:700;color:var(--navy);white-space:nowrap;}
+.inv-dd{flex:1;border:1px solid #c0cfe8;border-radius:5px;padding:5px 9px;font-size:.8rem;background:#fff;color:#333;max-width:480px;}
+.norule{background:#fff3cd;border:2px solid #ffc107;border-radius:7px;padding:10px 13px;margin:9px;font-size:.8rem;color:#856404;}
+.saveas{background:#fff;border-radius:7px;box-shadow:0 7px 28px rgba(0,0,0,.35);width:480px;overflow:hidden;}
+.saveas-chrome{background:#1f4e79;padding:7px 11px;display:flex;}
+.saveas-chrome span{color:#fff;font-size:.8rem;font-weight:600;}
+.ctx{background:#fff;border:1px solid #ddd;border-radius:5px;box-shadow:0 5px 16px rgba(0,0,0,.18);min-width:150px;padding:3px 0;position:absolute;z-index:200;}
+.ctx-item{padding:6px 12px;font-size:.78rem;color:#222;cursor:pointer;}
+.ctx-item:hover{background:#e3f2fd;}
+.pr-sec{background:#fff;border-radius:7px;border:1px solid #e0e8f0;margin:6px 9px 0;overflow:hidden;}
+.pr-sec-hdr{padding:5px 11px;font-size:.7rem;font-weight:700;color:#fff;}
+.pr-sec-hdr.navy{background:var(--navy);}.pr-sec-hdr.orange{background:#c8601a;}.pr-sec-hdr.green{background:#2e7d32;}
+.pr-row{display:flex;align-items:center;border-bottom:1px solid #f0f4f8;min-height:25px;}
+.pr-lbl{width:120px;padding:3px 7px;font-size:.67rem;font-weight:600;color:#666;flex-shrink:0;}
+.pr-val{flex:1;padding:3px 7px;font-size:.74rem;color:#111;border-left:1px solid #f0f4f8;}
+.pr-val.hi{background:#e8f5e9;color:#2e7d32;font-weight:700;}
+.pr-val.edit{background:#fffde7;border-left-color:#f9a825;}
+.sh-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:5px;font-size:.78rem;font-weight:700;cursor:pointer;border:none;font-family:'DM Sans',sans-serif;}
+.sh-btn.approve{background:var(--grn);color:#fff;}.sh-btn.reject{background:var(--red);color:#fff;}
+.multi-split{display:flex;flex:1;overflow:hidden;gap:6px;background:var(--bg);padding:6px;}
+.rep-panel{flex:1;display:flex;flex-direction:column;border-radius:8px;overflow:hidden;border:2px solid rgba(255,255,255,.1);}
+.rep-panel-hdr{padding:5px 10px;font-size:.74rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;}
+.rep-panel-hdr.green{background:#166534;border-color:#22c55e;}
+.rep-panel-hdr.gold{background:#92400e;}
+.rep-panel-body{flex:1;overflow-y:auto;padding:8px;font-size:.76rem;color:#333;background:#f8f9fa;}
+.dup-popup{background:linear-gradient(145deg,#141f38,#0d1628);border:2px solid var(--gold);border-radius:12px;padding:18px;max-width:480px;width:90vw;box-shadow:0 20px 55px rgba(0,0,0,.7);}
+.dup-title{font-size:.92rem;font-weight:700;color:var(--gold2);margin-bottom:4px;}
+.dup-sub{font-size:.73rem;color:var(--text2);margin-bottom:14px;}
+.dup-inv{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:7px;padding:9px 12px;margin-bottom:10px;font-size:.78rem;}
+.dup-inv .dinv{color:var(--gold2);font-weight:700;font-family:'DM Mono',monospace;}
+.dup-inv .downer{color:var(--text2);}
+.dup-q{background:rgba(200,169,81,.1);border:1px solid var(--border2);border-radius:7px;padding:9px 12px;font-size:.8rem;color:var(--gold2);margin-bottom:14px;}
+.dup-btns{display:flex;gap:8px;}
+.dup-btn{flex:1;border:none;padding:9px;border-radius:7px;font-size:.81rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.dup-btn.yes{background:linear-gradient(135deg,var(--grn),var(--grn2));color:#fff;}
+.dup-btn.no{background:linear-gradient(135deg,var(--red2),var(--red));color:#fff;}
+.chip{display:inline-flex;align-items:center;gap:3px;padding:1px 8px;border-radius:8px;font-size:.69rem;font-weight:600;}
+.chip.claimed{background:#dcfce7;color:#15803d;}.chip.released{background:#fef3c7;color:#b45309;}.chip.unclaimed{background:#f1f5f9;color:#475569;}
+.sup-badge{background:linear-gradient(135deg,var(--gold),#a8882e);color:var(--navy);font-size:.62rem;font-weight:800;padding:1px 7px;border-radius:8px;text-transform:uppercase;letter-spacing:.06em;}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="top-nav">
+  <span class="nav-lbl">Chapters:</span>
+  <button class="ch-pill on" id="p0" onclick="goChapter(0)">📝 Save Note</button>
+  <button class="ch-pill" id="p1" onclick="goChapter(1)">🗺️ Tool Overview</button>
+  <button class="ch-pill" id="p2" onclick="goChapter(2)">👥 Multi-User &amp; Stacking</button>
+  <button class="ch-pill" id="p3" onclick="goChapter(3)">🏥 Epic WQ Export</button>
+  <button class="ch-pill" id="p4" onclick="goChapter(4)">⚙️ Run Engine</button>
+  <button class="ch-pill" id="p5" onclick="goChapter(5)">🔍 Claim Resolver</button>
+  <button class="ch-pill" id="p6" onclick="goChapter(6)">✅ Working a Claim</button>
+  <button class="ch-pill" id="p7" onclick="goChapter(7)">🚨 Fix Missing Rule</button>
+  <button class="ch-pill" id="p8" onclick="goChapter(8)">🔄 Rule Now Active</button>
+</div>
+<div id="body-row">
+<div id="screen-panel">
+<div id="toast"></div>
+<!-- CH0: SAVE NOTE -->
+<div class="screen on" id="s-ch0">
+  <div class="gdrive">
+    <div class="gdrive-top">
+      <div class="gdrive-logo">
+        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M6 2l5 8.66-5 8.66H1L6 2z" fill="#4285f4"/><path d="M22 19.33H11l-2.5-4.33h8.5l2.5 4.33z" fill="#34a853"/><path d="M11 10.67L8.5 6h8.5L22 15H13.5l-2.5-4.33z" fill="#fbbc05"/></svg>
+        <span>Drive</span>
+      </div>
+      <input class="gdrive-search" placeholder="Search in Drive" readonly>
+    </div>
+    <div class="gdrive-body">
+      <div class="gdrive-sb">
+        <div style="position:relative;">
+          <div class="gd-new ring" onclick="ch0_new(event)"><span style="font-size:1.2rem;font-weight:300;">+</span> New</div>
+          <div class="dd" id="dd-ch0-new" style="top:40px;left:0;min-width:180px;">
+            <div class="ddi">📁 New folder</div><div class="ddi sep"></div>
+            <div class="ddi hl" onclick="ch0_selectDoc()">📄 Google Docs</div>
+            <div class="ddi">📊 Google Sheets</div>
+          </div>
+        </div>
+        <div class="gd-sbi on">🏠 My Drive</div>
+        <div class="gd-sbi">👥 Shared</div>
+        <div class="gd-sbi">⭐ Starred</div>
+      </div>
+      <div class="gdrive-main">
+        <div class="gd-sec">Folders</div>
+        <div class="gd-fitem"><span style="font-size:1.1rem;">📁</span><span style="font-size:.81rem;color:#333;">AR Follow-Up Notes / Research (Provider Issues / CPT / CLIA)</span></div>
+        <div class="gd-sec" style="margin-top:8px;">Files in folder</div>
+        <div class="gd-fitem"><span style="font-size:1rem;">📄</span><span style="font-size:.8rem;color:#333;">note_humana_timely_filing.gdoc</span></div>
+        <div class="gd-fitem"><span style="font-size:1rem;">📄</span><span style="font-size:.8rem;color:#333;">note_bcbs_auth_denial.gdoc</span></div>
+        <div class="gd-fitem" id="ch0-newdoc" style="display:none;background:#e8f0fe;border-radius:5px;"><span style="font-size:1rem;">📄</span><span style="font-size:.8rem;color:#1967d2;font-weight:600;">Untitled document ← newly created</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ov" id="ov-ch0-doc">
+    <div class="dbox" style="width:620px;background:#fff;color:#333;">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px;">
+        <div style="width:20px;height:20px;background:#4285f4;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;">📄</div>
+        <input value="Untitled document" style="border:none;font-size:.88rem;font-weight:600;color:#333;flex:1;outline:none;">
+        <span style="font-size:.75rem;color:#888;cursor:pointer;" onclick="ch0_filemenu()">File ▾</span>
+        <div id="ch0-fmdd" style="display:none;background:#fff;border:1px solid #e0e0e0;border-radius:5px;padding:3px 0;position:absolute;top:50px;right:55px;min-width:150px;box-shadow:0 3px 10px rgba(0,0,0,.12);z-index:100;">
+          <div class="ddi hl" onclick="ch0_move()">📁 Move</div>
+          <div class="ddi">💾 Save</div>
+        </div>
+      </div>
+      <div style="min-height:150px;border:1px solid #e0e0e0;border-radius:4px;padding:12px;font-size:.82rem;color:#333;line-height:1.75;margin-bottom:12px;">
+        <p style="color:#999;font-style:italic;margin-bottom:8px;">← Paste your Epic note here. Include invoice number, payer, CARC/RARC, denial reason, and research findings.</p>
+        <p><strong>Example format:</strong></p>
+        <p>PB 04/01/2026 PT NAME [NAME] INV# [INV_NUM]</p>
+        <p>PAYOR BALANCE $490.00 PAYOR HUMANA MEDICARE</p>
+        <p>Humana MA denied CPT 99497 CO 129/M51. ACP billed same day as E/M without modifier 25.</p>
+        <p>Per review: ACP ≥16 min documented. Add modifier 25, route to Coding. .pbf: Coding review [DATE].</p>
+      </div>
+      <div class="dbtns" style="border-top:1px solid #eee;padding-top:10px;margin-top:0;">
+        <button class="dbtn sec" onclick="closeOv('ov-ch0-doc')">Close</button>
+      </div>
+    </div>
+  </div>
+  <div class="ov" id="ov-ch0-move">
+    <div class="dbox" style="width:400px;">
+      <div class="dtitle">📁 Move document</div>
+      <div style="border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:12px;">
+        <div style="background:rgba(255,255,255,.04);padding:5px 11px;font-size:.7rem;color:var(--text3);border-bottom:1px solid var(--border);">Suggested</div>
+        <div style="display:flex;align-items:center;gap:9px;padding:11px 12px;cursor:pointer;" onclick="ch0_confirmMove()">
+          <span style="font-size:1.2rem;">📁</span>
+          <div style="flex:1;"><div style="font-size:.82rem;font-weight:600;color:var(--text);">AR Follow-Up Notes / Research</div><div style="font-size:.7rem;color:var(--text3);">Provider Issues / CPT / CLIA</div></div>
+          <button class="dbtn grn" style="font-size:.72rem;padding:4px 10px;">Move here</button>
+        </div>
+      </div>
+      <div class="dbtns"><button class="dbtn sec" onclick="closeOv('ov-ch0-move')">Cancel</button></div>
+    </div>
+  </div>
+  <div class="abar"><div class="ibanner" id="ch0-banner">Click <strong>+ New</strong> to create a Google Doc for your Epic note.</div></div>
+</div>
+
+<!-- CH1: EPIC WQ EXPORT -->
+<div class="screen" id="s-ch3">
+  <div id="ch1-epic" style="display:flex;flex-direction:column;flex:1;overflow:hidden;background:#fff;">
+    <div class="epic-chrome"><span>⬛ Epic | Hyperspace — ACH BILLING OFFICE — GENPRD</span></div>
+    <div class="epic-wq-bar"><h2>Workqueue ACH NO RESPONSE [11555]</h2><div style="background:#e8f5e9;color:#2e7d32;font-size:.68rem;padding:2px 7px;border-radius:8px;font-weight:600;">Filtered</div></div>
+    <div class="epic-toolbar">
+      <div style="font-size:.7rem;color:#333;background:#e3f2fd;border:1px solid #90caf9;padding:2px 7px;border-radius:8px;">Active (Total: 45; $12,490.02)</div>
+      <div style="margin-left:auto;">
+        <div class="epic-ebtn ring" onclick="ch1_export(event)">📁 Export All ▾
+          <div class="dd" id="dd-ch1-exp" style="top:30px;right:0;min-width:200px;">
+            <div class="ddi hl" onclick="ch1_doExport()">📤 Export All workqueue items</div>
+            <div class="ddi sep"></div><div class="ddi">📊 Export Selected</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="epic-hdr"><div class="hc" style="width:105px;">Invoice Num</div><div class="hc" style="width:78px;">Svc Date</div><div class="hc" style="width:55px;">CPT</div><div class="hc" style="flex:1;">Payor</div><div class="hc" style="width:95px;">Dept</div><div class="hc" style="width:58px;">Billed</div></div>
+    <div style="flex:1;overflow-y:auto;" id="ch1-invlist"></div>
+  </div>
+  <div class="ov" id="ov-ch1-saveas">
+    <div class="saveas">
+      <div class="saveas-chrome"><span>💾 Save As</span></div>
+      <div style="padding:12px;">
+        <div style="background:#f5f5f5;border:1px solid #ccc;border-radius:3px;padding:3px 9px;font-size:.76rem;color:#333;margin-bottom:9px;">📁 Documents</div>
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;"><label style="font-size:.75rem;color:#333;width:68px;">File name:</label><div style="flex:1;border:2px solid #0078d4;border-radius:3px;padding:2px 7px;font-size:.77rem;font-weight:600;color:#333;">ACH_NO_RESPONSE_2026-06-10</div></div>
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px;"><label style="font-size:.75rem;color:#333;width:68px;">Save as type:</label><div style="flex:1;border:1px solid #ccc;border-radius:3px;padding:2px 7px;font-size:.75rem;color:#333;">Spreadsheet (*.xlsx)</div></div>
+        <div class="dbtns"><button class="dbtn sec" onclick="closeOv('ov-ch1-saveas')">Cancel</button><button class="dbtn grn ring" onclick="ch1_save()">Save</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="ov" id="ov-ch1-next">
+    <div class="dbox" style="width:440px;">
+      <div class="dtitle">📊 Open in AR Decision Engine</div>
+      <div class="dbody">File saved. New workflow — no Excel needed:<br><br><strong>1.</strong> Open the saved .xlsx, select all (Ctrl+A), copy (Ctrl+C)<br><strong>2.</strong> Open <strong>AR Decision Engine Final</strong> in Google Sheets<br><strong>3.</strong> Go to <strong>Epic_Import</strong> tab<br><strong>4.</strong> Paste (Ctrl+V) under any existing data — include your header row</div>
+      <div class="dbtns"><button class="dbtn gold ring" onclick="ch1_openGS()">Open AR Decision Engine →</button></div>
+    </div>
+  </div>
+  <div id="ch1-gs" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+    <div class="gs-wrap">
+      <div class="gs-top">
+        <div class="gs-logo"><svg width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" fill="#0f9d58"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg><span class="gs-title">AR_Decision_Engine_Final</span></div>
+        <span class="gs-mi">File</span><span class="gs-mi">Edit</span>
+        <span class="gs-mi npp ring" onclick="ch1_armenu()">AR Engine ▾</span>
+        <div class="dd" id="dd-ch1-ar" style="top:30px;left:260px;min-width:220px;"><div class="ddi">⚙️ Run Decision Engine</div><div class="ddi sep"></div><div class="ddi">📋 Claim Resolver</div></div>
+      </div>
+      <div style="background:#e8f0fe;border-bottom:2px solid #1a3456;padding:4px 11px;font-size:.76rem;font-weight:700;color:#1a3456;flex-shrink:0;">📋 Epic_Import — Paste your Epic export below. Include your header row. Paste under existing data.</div>
+      <div class="gs-body"><div class="xgrid" id="ch1-de-grid"></div></div>
+      <div class="gs-tabs"><div class="gs-tab">Claim_Resolver</div><div class="gs-tab on">Epic_Import</div><div class="gs-tab">Claims_Database</div><div class="gs-tab">Denial_Lookup</div><div class="gs-tab">Settings</div></div>
+    </div>
+  </div>
+  <div class="abar">
+    <div class="ibanner" id="ch1-banner">Epic WQ is open. Click the blue <strong>Export All ▾</strong> button.</div>
+    <button class="abtn dim" id="ch1-paste-btn" onclick="ch1_paste()" disabled>📋 Paste Epic data</button>
+    <button class="abtn dim" id="ch1-run-btn" onclick="ch1_run()" disabled>⚡ Run Engine</button>
+  </div>
+</div>
+
+<!-- CH2: RUN ENGINE -->
+<div class="screen" id="s-ch4">
+  <div class="gs-wrap">
+    <div class="gs-top">
+      <div class="gs-logo"><svg width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" fill="#0f9d58"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg><span class="gs-title">AR_Decision_Engine_Final</span></div>
+      <span class="gs-mi npp ring" onclick="ch2_menu()">AR Engine ▾</span>
+      <div class="dd" id="dd-ch2" style="top:30px;left:180px;min-width:240px;">
+        <div class="ddi hl" onclick="ch2_run()">⚙️ Run Decision Engine</div>
+        <div class="ddi sep"></div>
+        <div class="ddi">📋 Claim Resolver</div>
+        <div class="ddi">↩ Release Claim</div>
+        <div class="ddi">🗑 Clear All &amp; Reset</div>
+      </div>
+    </div>
+    <div class="gs-body" style="padding:12px;">
+      <div style="background:linear-gradient(135deg,rgba(26,52,86,.8),rgba(13,31,60,.6));border:1px solid var(--border2);border-radius:9px;padding:14px 18px;margin-bottom:11px;color:var(--text);">
+        <div style="font-size:.83rem;font-weight:700;color:var(--gold2);margin-bottom:5px;">⚙️ AR Decision Engine — Google Sheets</div>
+        <div style="font-size:.76rem;color:var(--text2);line-height:1.6;">Click <strong style="color:var(--gold);">AR Engine → Run Decision Engine</strong> to process all pasted claims. The engine reads every block in Epic_Import, claims rows for your login, applies all rules from Denial_Lookup and Override_Rules, and writes results to Claims_Database.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:11px;">
+        <div style="background:#fff;border:1px solid #e0e8f0;border-radius:7px;padding:10px;text-align:center;"><div style="font-size:1.5rem;font-weight:700;color:#1a3456;">45</div><div style="font-size:.7rem;color:#666;">Claims Imported</div></div>
+        <div style="background:#fff;border:1px solid #e0e8f0;border-radius:7px;padding:10px;text-align:center;"><div id="ch2-proc" style="font-size:1.5rem;font-weight:700;color:#2e7d32;">0</div><div style="font-size:.7rem;color:#666;">Processed</div></div>
+        <div style="background:#fff;border:1px solid #e0e8f0;border-radius:7px;padding:10px;text-align:center;"><div id="ch2-matched" style="font-size:1.5rem;font-weight:700;color:#a8882e;">0</div><div style="font-size:.7rem;color:#666;">Rules Matched</div></div>
+      </div>
+      <div id="ch2-log" style="background:#fff;border:1px solid #e0e8f0;border-radius:7px;padding:10px;font-family:'DM Mono',monospace;font-size:.7rem;color:#333;min-height:70px;max-height:140px;overflow-y:auto;"><div style="color:#888;">Waiting for engine run...</div></div>
+    </div>
+    <div class="gs-tabs"><div class="gs-tab hi">Epic_Import ✓</div><div class="gs-tab on">AR Engine</div><div class="gs-tab">Claims_Database</div></div>
+  </div>
+  <div class="ov" id="ov-ch2-done">
+    <div class="dbox" style="width:360px;">
+      <div class="dtitle">✅ Decision Engine Complete!</div>
+      <div class="dbody">Processed: <strong>45</strong><br>Rules matched: <strong>38</strong><br>No rule: <strong>7</strong><br><br>Claims auto-assigned to your login. Go to <strong>Claim_Resolver</strong> to begin.</div>
+      <div class="dbtns"><button class="dbtn gold" onclick="ch2_done()">Go to Claim Resolver →</button></div>
+    </div>
+  </div>
+  <div class="abar"><div class="ibanner" id="ch2-banner">Click <strong>AR Engine</strong> in the menu bar, then <strong>Run Decision Engine</strong>.</div></div>
+</div>
+
+<!-- CH3: CLAIM RESOLVER -->
+<div class="screen" id="s-ch5">
+  <div class="gs-wrap">
+    <div class="gs-top">
+      <div class="gs-logo"><svg width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" fill="#0f9d58"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg><span class="gs-title">AR_Decision_Engine_Final — Claim_Resolver</span></div>
+      <span class="gs-mi npp">AR Engine ▾</span>
+    </div>
+    <div class="cr-hdr"><h2>🔍 AR Claim Resolver</h2><p>Your claims are auto-assigned after running the engine. Select an invoice to see guidance.</p></div>
+    <div class="inv-bar">
+      <span class="inv-bar-lbl">SELECT INVOICE:</span>
+      <select class="inv-dd" id="ch3-sel" onchange="ch3_select()">
+        <option value="">— select an invoice —</option>
+        <option value="P100234561">P100234561 — BCBS NEBRASKA MEDICARE — 93312 — 55d</option>
+        <option value="P100456783">P100456783 — BCBS NEBRASKA MEDICARE — 99231 — 40d</option>
+        <option value="P101234561">P101234561 — HUMANA MEDICARE — 99213,99497 — 60d</option>
+        <option value="P101456783">P101456783 (NO RULE) — MEDICA INS — 99223,99497</option>
+      </select>
+    </div>
+    <div id="ch3-body" class="cr-body"><div style="text-align:center;padding:28px;color:#999;">Select an invoice above.</div></div>
+    <div id="ch3-btns" class="cr-btns" style="display:none;">
+      <button class="cr-btn navy" onclick="ch3_action('resolve')">✓ Resolve Override</button>
+      <button class="cr-btn red" onclick="ch3_action('worked')">📋 Mark as Worked</button>
+      <button class="cr-btn gold" onclick="ch3_action('release')">↩ Release Claim</button>
+    </div>
+    <div class="gs-tabs"><div class="gs-tab on">Claim_Resolver</div><div class="gs-tab">Epic_Import</div><div class="gs-tab">Claims_Database</div><div class="gs-tab">Worked_Claims</div></div>
+  </div>
+  <div class="ov" id="ov-ch3-action">
+    <div class="dbox" style="width:360px;">
+      <div class="dtitle" id="ch3-act-title">Action</div>
+      <div class="dbody" id="ch3-act-body"></div>
+      <div class="dbtns">
+        <button class="dbtn sec" onclick="closeOv('ov-ch3-action')">Cancel</button>
+        <button class="dbtn gold" onclick="closeOv('ov-ch3-action');markDone(3);">Yes — Continue</button>
+      </div>
+    </div>
+  </div>
+  <div class="abar">
+    <div class="ibanner" id="ch3-banner">Select any invoice from the dropdown to see Decision Engine guidance.</div>
+    <button class="abtn navy" id="ch3-fixbtn" style="display:none;" onclick="goChapter(7)">🚨 Fix Missing Rule →</button>
+  </div>
+</div>
+<!-- CH4: WORKING A CLAIM -->
+<div class="screen" id="s-ch6">
+  <div style="display:flex;flex-direction:column;flex:1;overflow:hidden;background:#f4f6f9;">
+    <div class="cr-hdr"><h2>✅ Working a Claim — Three Action Buttons</h2><p>Each button has a confirm dialog. No action runs until you click Yes.</p></div>
+    <div style="flex:1;overflow-y:auto;padding:9px 10px;">
+      <div class="cr-sec">
+        <div class="cr-sec-hdr" style="display:flex;align-items:center;gap:8px;"><span style="background:var(--gold);color:var(--navy);padding:1px 7px;border-radius:8px;font-size:.68rem;">1</span>✓ Resolve Override</div>
+        <div style="padding:10px 12px;display:flex;gap:10px;align-items:flex-start;">
+          <button class="cr-btn navy" style="flex-shrink:0;">✓ Resolve Override</button>
+          <div style="font-size:.78rem;color:#333;line-height:1.65;"><strong>Use when:</strong> An Override Rule drove the output (TIMELY_URGENT, DEFERRED, etc.) and you've confirmed the override action is complete.<br><strong>What it does:</strong> Logs resolution to Worked_Claims, marks claim resolved, removes from queue.<br><div style="background:#e8f0fe;border-radius:5px;padding:7px 10px;margin-top:6px;font-size:.75rem;color:#1a3456;">💡 A confirm dialog appears first — click Yes to proceed or Cancel to go back.</div></div>
+        </div>
+      </div>
+      <div class="cr-sec">
+        <div class="cr-sec-hdr red" style="display:flex;align-items:center;gap:8px;"><span style="background:var(--gold);color:var(--navy);padding:1px 7px;border-radius:8px;font-size:.68rem;">2</span>📋 Mark as Worked</div>
+        <div style="padding:10px 12px;display:flex;gap:10px;align-items:flex-start;">
+          <button class="cr-btn red" style="flex-shrink:0;">📋 Mark as Worked</button>
+          <div style="font-size:.78rem;color:#333;line-height:1.65;"><strong>Use when:</strong> You have completed all work on this claim in Epic — filed appeal, routed to coding, adjusted off, etc.<br><strong>What it does:</strong> Permanently logs to Worked_Claims with your email, date, CARC, category, and action. Removes from your queue.<br><div style="background:#fff3f3;border-radius:5px;padding:7px 10px;margin-top:6px;font-size:.75rem;color:#7b2d2d;">⚠️ Complete the action in Epic FIRST. Mark as Worked is a log — it does not act in Epic automatically. This cannot be undone.</div></div>
+        </div>
+      </div>
+      <div class="cr-sec">
+        <div class="cr-sec-hdr gold" style="display:flex;align-items:center;gap:8px;"><span style="background:var(--navy);color:var(--gold);padding:1px 7px;border-radius:8px;font-size:.68rem;">3</span>↩ Release Claim</div>
+        <div style="padding:10px 12px;display:flex;gap:10px;align-items:flex-start;">
+          <button class="cr-btn gold" style="flex-shrink:0;">↩ Release Claim</button>
+          <div style="font-size:.78rem;color:#333;line-height:1.65;"><strong>Use when:</strong> You cannot work this claim right now and want to return it to the shared pool.<br><strong>What it does:</strong> Clears your ownership. The claim becomes available for any rep on their next engine run.<br><div style="background:#fffde7;border-radius:5px;padding:7px 10px;margin-top:6px;font-size:.75rem;color:#856404;">💡 Claims auto-release after 10 hours of inactivity regardless — but use this button to release immediately. Supervisors can also release any rep's claim from Settings.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="abar"><div class="ibanner">All three buttons show a confirmation dialog before running. Click <strong>Cancel</strong> to abort, <strong>Yes</strong> to proceed.</div><button class="abtn gold" onclick="goChapter(2)">Next: Multi-User →</button></div>
+</div>
+
+<!-- CH5: MULTI-USER -->
+<!-- CH1: TOOL OVERVIEW -->
+<div class="screen" id="s-ch1">
+  <div style="display:flex;flex-direction:column;flex:1;overflow:hidden;background:#f4f6f9;">
+    <div class="cr-hdr"><h2>🗺️ Tool Overview — AR Decision Engine vs Note Pre-Processor</h2><p>Two separate Google Sheets work together. Understand what each one does before you start.</p></div>
+    <div style="flex:1;overflow-y:auto;padding:10px 12px;">
+
+      <!-- AR Decision Engine -->
+      <div class="cr-sec">
+        <div class="cr-sec-hdr" style="display:flex;align-items:center;gap:8px;font-size:.82rem;">
+          <svg width="16" height="16" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" fill="#0f9d58"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+          AR_Decision_Engine_Final — Your daily worklist tool
+        </div>
+        <div style="padding:10px 12px;">
+          <div style="font-size:.8rem;color:#333;line-height:1.75;margin-bottom:10px;">
+            <strong>What it is:</strong> The main Google Sheet your team works in every day. You export your Epic workqueue, paste it here, run the engine, and work your claims.<br><br>
+            <strong>When you access it:</strong> Every time you work AR — export from Epic, paste, run engine, resolve claims.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+            <div style="background:#e8f5e9;border-radius:6px;padding:8px 11px;font-size:.77rem;">
+              <div style="font-weight:700;color:#166534;margin-bottom:4px;">Epic_Import tab</div>
+              Paste your Epic WQ export here. Multiple reps stack their data in this one sheet, each with their own header row.
+            </div>
+            <div style="background:#e8f5e9;border-radius:6px;padding:8px 11px;font-size:.77rem;">
+              <div style="font-weight:700;color:#166534;margin-bottom:4px;">Claim_Resolver tab</div>
+              Select an invoice from your dropdown. The engine output (category, root cause, workflow steps) populates automatically.
+            </div>
+            <div style="background:#e8f5e9;border-radius:6px;padding:8px 11px;font-size:.77rem;">
+              <div style="font-weight:700;color:#166534;margin-bottom:4px;">Claims_Database tab</div>
+              All processed claim data lives here. The engine writes here after every run. Do not edit manually.
+            </div>
+            <div style="background:#e8f5e9;border-radius:6px;padding:8px 11px;font-size:.77rem;">
+              <div style="font-weight:700;color:#166634;margin-bottom:4px;">Denial_Lookup tab</div>
+              The rule library — every CARC/payer combination the engine knows how to handle. New rules from Note Pre-Processor go here.
+            </div>
+            <div style="background:#e8f5e9;border-radius:6px;padding:8px 11px;font-size:.77rem;">
+              <div style="font-weight:700;color:#166534;margin-bottom:4px;">Override_Rules tab</div>
+              Rules that override denial lookup — timely filing deadlines, department transfers, allowance variances, etc.
+            </div>
+            <div style="background:#e8f5e9;border-radius:6px;padding:8px 11px;font-size:.77rem;">
+              <div style="font-weight:700;color:#166534;margin-bottom:4px;">Worked_Claims tab</div>
+              Permanent log of every claim marked as worked. Date, rep email, action taken.
+            </div>
+          </div>
+          <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 11px;font-size:.77rem;color:#856404;margin-top:8px;">
+            ⚙️ <strong>AR Engine menu:</strong> Run Decision Engine · Resolve Override · Mark as Worked · Release Claim · Clear All &amp; Reset
+          </div>
+        </div>
+      </div>
+
+      <!-- Note Pre-Processor -->
+      <div class="cr-sec" style="margin-top:9px;">
+        <div class="cr-sec-hdr" style="background:#166534;display:flex;align-items:center;gap:8px;font-size:.82rem;">
+          <svg width="16" height="16" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" fill="#34a853"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Note Pre-Processor — The rule-building tool
+        </div>
+        <div style="padding:10px 12px;">
+          <div style="font-size:.8rem;color:#333;line-height:1.75;margin-bottom:10px;">
+            <strong>What it is:</strong> A separate Google Sheet used to create and push new denial rules to the AR Decision Engine. When the engine shows "No Rule Matched" for a claim, you research the denial, write a work note in Google Drive, and use the Note Pre-Processor to turn that note into a live rule.<br><br>
+            <strong>When you access it:</strong> Only when the AR Decision Engine cannot find a rule for a denial scenario. Not part of the daily workflow — you only need it when something is missing.
+          </div>
+
+          <!-- Menu functions -->
+          <div style="font-size:.74rem;font-weight:700;color:#444;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;">Note Pre-Processor Menu — What each function does:</div>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:5px 10px;align-items:start;background:#f8f9fa;border-radius:6px;padding:8px 10px;font-size:.77rem;">
+              <span style="font-weight:700;color:#1a3456;white-space:nowrap;">2. Process Selected Rows</span>
+              <span style="color:#444;">Runs the parser on only the rows you have highlighted. Use when you want to process one specific note without touching the others.</span>
+              <span style="font-weight:700;color:#1a3456;white-space:nowrap;">3. Process All Queued Rows ⭐</span>
+              <span style="color:#444;"><strong>Most used.</strong> Runs the parser on every row with Status = Queued and generates a draft rule for each one. Use this after importing notes.</span>
+              <span style="font-weight:700;color:#1a3456;white-space:nowrap;">4. Reprocess All Rows (CPT/Modifier)</span>
+              <span style="color:#444;">Re-runs the parser on all rows with updated CPT/Modifier logic. Use if the parser templates were updated and you want all existing notes re-evaluated.</span>
+              <span style="font-weight:700;color:#1a3456;white-space:nowrap;color:#2e7d32;">5. Approve &amp; Add to Engine ⭐</span>
+              <span style="color:#444;"><strong>Most used.</strong> Pushes the reviewed rule from Parsed_Review into the AR Decision Engine's Denial_Lookup and Payer_Map tables. Always review fields in Parsed_Review first.</span>
+              <span style="font-weight:700;color:#1a3456;white-space:nowrap;">6. Reject &amp; Clear</span>
+              <span style="color:#444;">Clears the current Parsed_Review without pushing anything. Use when the draft rule is incorrect and you do not want to create a bad rule.</span>
+              <span style="font-weight:700;color:#1a3456;white-space:nowrap;">7. Save to Parser Settings</span>
+              <span style="color:#444;">Saves keywords from the current note to Parser_Settings so the parser recognises this denial pattern in future notes automatically.</span>
+              <span style="font-weight:700;color:#1a3456;white-space:nowrap;color:#2e7d32;">8. Import from Drive ⭐</span>
+              <span style="color:#444;"><strong>Most used.</strong> Scans your Google Drive research folder and imports any new .gdoc notes into Note_Intake. Already-imported notes are skipped.</span>
+              <span style="font-weight:700;color:#1a3456;white-space:nowrap;">9. Run Batch Import</span>
+              <span style="color:#444;">Imports and immediately processes all new notes in one step. Useful when you have several new notes ready at once.</span>
+              <span style="font-weight:700;color:#1a3456;white-space:nowrap;">10. Backfill Missing Keywords</span>
+              <span style="color:#444;">Scans all previously approved rules and adds any keywords that are not yet in Parser_Settings. Run this if the parser seems to be missing patterns it should already know.</span>
+              <span style="font-weight:700;color:#1a3456;white-space:nowrap;">11. Sync Existing Rules from AR Engine</span>
+              <span style="color:#444;">Refreshes the Existing_Rules sheet with the latest Denial_Lookup and Override_Rules from the AR Decision Engine. Run this if Existing_Rules looks outdated.</span>
+              <span style="font-weight:700;color:#1a3456;white-space:nowrap;">12. Refresh Dashboard</span>
+              <span style="color:#444;">Updates the Dashboard sheet with current processing stats — queued, processed, approved, rejected counts. Run after a batch session.</span>
+              <span style="font-weight:700;color:#1a3456;white-space:nowrap;">13. Search Parser Settings</span>
+              <span style="color:#444;">Highlights matching keyword rows in Parser_Settings. Use to check whether a keyword or CARC code is already in the parser library before adding it again.</span>
+              <span style="font-weight:700;color:#1a3456;white-space:nowrap;">14. Clear Intake/Export Tabs</span>
+              <span style="color:#444;">Clears Note_Intake and any export staging tabs. Use at the start of a new batch to avoid confusion from old entries.</span>
+              <span style="font-weight:700;color:#1a3456;white-space:nowrap;">15. Clear Processing Log</span>
+              <span style="color:#444;">Clears the internal processing log. Use when the log is cluttered from previous runs and you want a clean view.</span>
+            </div>
+          </div>
+          <div style="background:#e8f0fe;border:1px solid #90caf9;border-radius:6px;padding:8px 11px;font-size:.77rem;color:#1a3456;margin-top:8px;">
+            ⭐ = Functions you will use regularly. The others are for maintenance, troubleshooting, or batch operations.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <div class="abar"><div class="ibanner">Review both tools above, then proceed through the chapters in order. Start with Multi-User &amp; Stacking so you know how to paste your WQ correctly.</div><button class="abtn gold" onclick="goChapter(2)">Next: Multi-User &amp; Stacking →</button></div>
+</div>
+
+<div class="screen" id="s-ch2">
+  <div style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+    <div class="cr-hdr"><h2>👥 Multi-User — How Multiple Reps Work Simultaneously</h2><p>Each rep pastes their WQ under the previous rep's data. The engine separates claims automatically.</p></div>
+    <div id="ch5-p1" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+      <div style="background:var(--panel);border-bottom:1px solid var(--border);padding:8px 14px;font-size:.76rem;color:var(--text2);flex-shrink:0;">
+        📋 <strong style="color:var(--gold);">Epic_Import</strong> — Two reps have pasted their WQ exports stacked vertically. Each has its own header row.
+      </div>
+      <div class="multi-split">
+        <div class="rep-panel">
+          <div class="rep-panel-hdr green">👤 Rep A — repa@yourhospital.org <span class="chip claimed" style="margin-left:auto;">Ran engine first ✓</span></div>
+          <div class="rep-panel-body">
+            <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:5px;padding:7px 10px;margin-bottom:7px;font-size:.75rem;"><strong>✅ Rep A ran the engine first.</strong><br>Their WQ rows are all claimed under her email. They appear in Rep A's Claim_Resolver dropdown only.</div>
+            <div style="background:#fff;border-radius:5px;border:1px solid #e0e0e0;padding:7px;">
+              <div style="font-size:.69rem;font-weight:700;color:#888;margin-bottom:4px;">REP A'S CLAIMED INVOICES</div>
+              <div id="ch5-sab-claims" style="font-size:.71rem;color:#1a3456;line-height:1.9;">INV-001234 <span class="chip claimed">CLAIMED</span><br>INV-001235 <span class="chip claimed">CLAIMED</span><br>INV-001236 <span class="chip claimed">CLAIMED</span><br><span style="color:#aaa;">... 16 more</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="rep-panel" style="border-color:rgba(200,169,81,.3);">
+          <div class="rep-panel-hdr gold">👤 Rep B — repb@yourhospital.org <span style="margin-left:auto;background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:8px;font-size:.67rem;">Pasting WQ now</span></div>
+          <div class="rep-panel-body">
+            <div style="background:#fff8ed;border:1px solid #fed7aa;border-radius:5px;padding:7px 10px;margin-bottom:7px;font-size:.75rem;"><strong>Rep B pastes her WQ under Rep A's rows</strong> (including her own header row) and runs the engine.</div>
+            <div style="background:#fff;border-radius:5px;border:1px solid #e0e0e0;padding:7px;margin-bottom:7px;">
+              <div style="font-size:.69rem;font-weight:700;color:#888;margin-bottom:4px;">RESULT — NO OVERLAPPING INVOICES</div>
+              <div style="font-size:.75rem;color:#333;line-height:1.6;">No dialog appears. Rep B's invoices are automatically claimed for her. Rep A's rows are never touched.</div>
+            </div>
+            <button class="abtn gold ring" style="width:100%;justify-content:center;padding:8px;" onclick="ch5_showResult()">→ See what happens when invoices DON'T overlap</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="ch5-p2" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+      <div style="background:var(--panel);border-bottom:1px solid var(--border);padding:8px 14px;font-size:.76rem;color:var(--text2);flex-shrink:0;">
+        Result — No overlapping invoices
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:10px 12px;background:#f4f6f9;">
+        <div class="cr-sec">
+          <div class="cr-sec-hdr grn">✅ No Dialog — Claims Automatically Separated</div>
+          <div style="padding:10px 12px;font-size:.8rem;color:#333;line-height:1.7;">Since Rep A and Rep B have completely different invoice numbers, the engine claims Rep B's rows automatically with no dialog. Both reps can work simultaneously:<br><br>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+              <div style="background:#e8f5e9;border-radius:6px;padding:9px;"><div style="font-size:.72rem;font-weight:700;color:#166534;margin-bottom:4px;">Rep A's dropdown</div><div style="font-size:.75rem;color:#333;">Shows only Rep A's 19 invoices — unchanged</div></div>
+              <div style="background:#fff3e0;border-radius:6px;padding:9px;"><div style="font-size:.72rem;font-weight:700;color:#92400e;margin-bottom:4px;">Rep B's dropdown</div><div style="font-size:.75rem;color:#333;">Shows only Rep B's invoices — claimed just now</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="cr-sec" style="margin-top:9px;">
+          <div class="cr-sec-hdr" style="background:#4a1a6a;">🔁 What if the same invoice appears in both WQs?</div>
+          <div style="padding:10px 12px;font-size:.8rem;color:#333;line-height:1.7;">If Rep B's WQ contains an invoice number that Rep A already has claimed, a <strong>per-invoice dialog</strong> appears for that specific invoice only. All other invoices are still claimed automatically.</div>
+          <div style="padding:0 12px 10px;"><button class="abtn gold ring" onclick="ch5_showDup()">→ See the duplicate invoice dialog</button></div>
+        </div>
+      </div>
+    </div>
+    <div id="ch5-p3" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+      <div style="background:var(--panel);border-bottom:1px solid var(--border);padding:8px 14px;font-size:.76rem;color:var(--text2);flex-shrink:0;">Duplicate invoice found — dialog appears once per duplicate</div>
+      <div style="flex:1;overflow-y:auto;padding:10px;background:#f4f6f9;">
+        <div style="display:flex;justify-content:center;margin-bottom:10px;">
+          <div class="dup-popup">
+            <div class="dup-title">🔁 Duplicate Invoice</div>
+            <div class="dup-sub">This invoice already exists in the sheet claimed by another rep.</div>
+            <div class="dup-inv"><span class="dinv">INV-001234</span> &nbsp;—&nbsp; <span class="downer">Claimed by: repa@yourhospital.org</span></div>
+            <div class="dup-q">YES = Keep with Rep A — do not add to my queue<br>NO = Transfer to me — remove from Rep A's list</div>
+            <div class="dup-btns">
+              <button class="dup-btn yes ring" onclick="ch5_dupYes()">YES — Keep with Rep A</button>
+              <button class="dup-btn no" onclick="ch5_dupNo()">NO — Transfer to me</button>
+            </div>
+          </div>
+        </div>
+        <div id="ch5-dup-result" style="display:none;" class="cr-sec">
+          <div class="cr-sec-hdr grn" id="ch5-dup-result-hdr">Result</div>
+          <div style="padding:10px 12px;font-size:.8rem;color:#333;line-height:1.7;" id="ch5-dup-result-body"></div>
+        </div>
+        <div class="cr-sec" style="margin-top:9px;">
+          <div class="cr-sec-hdr" style="background:#1a3a5c;">🔄 Per-Rep Hidden Sheets</div>
+          <div style="padding:10px 12px;font-size:.8rem;color:#333;line-height:1.7;">Each rep has their own hidden sheet — <code style="font-size:.74rem;">_Rep_repa</code>, <code style="font-size:.74rem;">_Rep_repb</code>, etc. — created automatically on first engine run.<br><br>The Claim_Resolver dropdown always points to <strong>your own</strong> hidden sheet when you open the spreadsheet, so you only ever see your own claimed invoices regardless of who ran the engine last.</div>
+        </div>
+        <div class="cr-sec" style="margin-top:9px;">
+          <div class="cr-sec-hdr gold">👑 Supervisor Access</div>
+          <div style="padding:10px 12px;font-size:.8rem;color:#333;line-height:1.7;">Supervisors listed in <strong>Settings → rows 63+</strong> (col A = Email, col B = Role, col C = YES) can see all claimed invoices across all reps and release any claim at any time.</div>
+        </div>
+      </div>
+    </div>
+    <div class="ov" id="ov-ch5-done">
+      <div class="dbox" style="width:360px;">
+        <div class="dtitle" id="ch5-done-title">Result</div>
+        <div class="dbody" id="ch5-done-body"></div>
+        <div class="dbtns"><button class="dbtn gold" onclick="closeOv('ov-ch5-done')">OK</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="abar"><div class="ibanner" id="ch5-banner">Two reps have pasted their WQ exports. Click to see what happens.</div></div>
+</div>
+
+<!-- CH6: FIX MISSING RULE -->
+<div class="screen" id="s-ch7">
+
+  <!-- Phase 1: No Rule in Claim Resolver -->
+  <div id="ch6-p1" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+    <div class="gs-wrap">
+      <div class="gs-top"><div class="gs-logo"><svg width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" fill="#0f9d58"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg><span class="gs-title">AR_Decision_Engine_Final — Claim_Resolver</span></div></div>
+      <div class="cr-hdr"><h2>🚨 No Rule Matched</h2><p>The engine couldn't find a rule for this claim's Scenario Key. Two ways to fix it.</p></div>
+      <div class="norule">⚠️ <strong>No matching scenario found for: MCR_B|129|M51</strong><br>Final Category: <strong>Review — No Rule Matched</strong> — the Scenario Key MCR_B|129|M51 is not in Denial_Lookup.</div>
+      <div class="cr-sec" style="margin:0 9px;">
+        <div class="cr-sec-hdr">Claim Details</div>
+        <div class="cr-grid">
+          <div class="cr-cell"><div class="cr-cell-lbl">Invoice</div><div class="cr-cell-val">P101456783</div></div>
+          <div class="cr-cell"><div class="cr-cell-lbl">Payor</div><div class="cr-cell-val">MEDICA INS MEDICARE</div></div>
+          <div class="cr-cell"><div class="cr-cell-lbl">CARC / RARC</div><div class="cr-cell-val red">129 / M51</div></div>
+          <div class="cr-cell"><div class="cr-cell-lbl">Scenario Key</div><div class="cr-cell-val red">MCR_B|129|M51</div></div>
+        </div>
+      </div>
+      <div style="padding:9px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="abtn gold ring" onclick="ch6_goNPP()" style="flex:1;justify-content:center;padding:9px;">📝 Option A — Create new rule via Note Pre-Processor</button>
+        <button class="abtn navy" onclick="ch6_goDenial()" style="flex:1;justify-content:center;padding:9px;">🔍 Option B — Search Denial_Lookup for similar rule</button>
+      </div>
+      <div class="gs-tabs"><div class="gs-tab on">Claim_Resolver</div><div class="gs-tab">Claims_Database</div><div class="gs-tab">Denial_Lookup</div></div>
+    </div>
+    <div class="abar"><div class="ibanner">Two options: create a new rule via Note Pre-Processor, or search Denial_Lookup for an existing similar rule to update.</div></div>
+  </div>
+
+  <!-- Phase 1b: Denial_Lookup search option -->
+  <div id="ch6-p1b" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+    <div class="gs-wrap">
+      <div class="gs-top"><div class="gs-logo"><svg width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" fill="#0f9d58"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg><span class="gs-title">AR_Decision_Engine_Final — Denial_Lookup</span></div></div>
+      <div style="background:var(--navy);border-bottom:2px solid var(--gold);padding:9px 14px;flex-shrink:0;">
+        <div style="font-size:.82rem;font-weight:700;color:var(--gold2);margin-bottom:5px;">🔍 Searching Denial_Lookup for Scenario Key: MCR_B|129|M51</div>
+        <div style="font-size:.76rem;color:var(--text2);line-height:1.6;">The engine shows the exact Scenario Key it searched for: <code style="background:rgba(255,255,255,.1);padding:1px 6px;border-radius:3px;color:var(--gold2);">MCR_B|129|M51</code><br>You can search Denial_Lookup for a related key (e.g. <code style="background:rgba(255,255,255,.1);padding:1px 6px;border-radius:3px;color:var(--gold2);">ALL|129|</code> or <code style="background:rgba(255,255,255,.1);padding:1px 6px;border-radius:3px;color:var(--gold2);">HUM|129|M51</code>) to see if a similar rule already exists that you can copy or adapt.</div>
+      </div>
+      <div class="gs-body">
+        <div class="xgrid" id="ch6-denial-grid"></div>
+      </div>
+      <div style="background:#e8f5e9;border-top:2px solid #a5d6a7;padding:9px 13px;flex-shrink:0;font-size:.79rem;color:#2e7d32;">
+        ✅ A similar rule exists for <strong>HUM|129|M51</strong>. You can use this as a template — copy the row, change the Scenario_Key to <strong>MCR_B|129|M51</strong>, and update any fields specific to Medica. Or use the Note Pre-Processor to create a clean rule from your work note.
+      </div>
+      <div class="gs-tabs"><div class="gs-tab">Claim_Resolver</div><div class="gs-tab">Claims_Database</div><div class="gs-tab on">Denial_Lookup</div></div>
+    </div>
+    <div class="abar">
+      <div class="ibanner">Denial_Lookup contains a similar rule for a different payer. You can adapt it or create a fresh one via Note Pre-Processor.</div>
+      <button class="abtn gold" onclick="ch6_goNPP()" style="white-space:nowrap;">→ Create via Note Pre-Processor</button>
+    </div>
+  </div>
+
+  <!-- Phase 2: NPP Note_Intake -->
+  <div id="ch6-p2" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+    <div class="gs-wrap">
+      <div class="gs-top"><div class="gs-logo"><svg width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" fill="#34a853"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg><span class="gs-title">Note Pre-Processor</span></div>
+        <span class="gs-mi npp ring" onclick="ch6_npmenu()">Note Pre-Processor ▾</span>
+        <div class="dd" id="dd-ch6-np" style="top:30px;left:190px;min-width:270px;">
+          <div class="ddi">🔧 1. Setup Workbook</div><div class="ddi sep"></div>
+          <div class="ddi">▶️ 2. Process Selected Rows</div>
+          <div class="ddi hl" onclick="ch6_process()">▶️ 3. Process All Queued Rows</div>
+          <div class="ddi">🔁 4. Reprocess All Rows (CPT/Modifier)</div><div class="ddi sep"></div>
+          <div class="ddi">✅ 5. Approve &amp; Add to Engine</div>
+          <div class="ddi">❌ 6. Reject &amp; Clear</div>
+          <div class="ddi">💾 7. Save to Parser Settings</div><div class="ddi sep"></div>
+          <div class="ddi hl" onclick="ch6_import()">📂 8. Import from Drive</div>
+          <div class="ddi">📊 9. Run Batch Import</div>
+          <div class="ddi">🔤 10. Backfill Missing Keywords</div><div class="ddi sep"></div>
+          <div class="ddi">🔄 11. Sync Existing Rules from AR Engine</div>
+          <div class="ddi">📊 12. Refresh Dashboard</div>
+          <div class="ddi">🔍 13. Search Parser Settings</div>
+          <div class="ddi">🗑 14. Clear Intake/Export Tabs</div>
+          <div class="ddi">📋 15. Clear Processing Log</div>
+        </div>
+      </div>
+      <!-- Sheet tabs with explanations accessible -->
+      <div style="background:#fff3cd;border-bottom:1px solid #ffc107;padding:6px 12px;font-size:.75rem;color:#856404;flex-shrink:0;">
+        💡 Click any sheet tab below to learn what it does and when to use it.
+      </div>
+      <div class="gs-body"><div class="xgrid" id="ch6-intake-grid"></div></div>
+      <div class="gs-tabs">
+        <div class="gs-tab on" id="ch6-tab-intake" onclick="ch6_showTab('intake')">Note_Intake</div>
+        <div class="gs-tab" id="ch6-tab-pr" onclick="ch6_showTab('pr')">Parsed_Review</div>
+        <div class="gs-tab" id="ch6-tab-ps" onclick="ch6_showTab('ps')">Parser_Settings</div>
+        <div class="gs-tab" id="ch6-tab-ih" onclick="ch6_showTab('ih')">Intake_History</div>
+        <div class="gs-tab" id="ch6-tab-er" onclick="ch6_showTab('er')">Existing_Rules</div>
+        <div class="gs-tab" id="ch6-tab-db" onclick="ch6_showTab('db')">Dashboard</div>
+      </div>
+    </div>
+    <!-- Sheet explanation overlay -->
+    <div class="ov" id="ov-ch6-tab">
+      <div class="dbox" style="width:500px;">
+        <div class="dtitle" id="ch6-tab-title">Sheet Info</div>
+        <div class="dbody" id="ch6-tab-body"></div>
+        <div class="dbtns"><button class="dbtn gold" onclick="closeOv('ov-ch6-tab')">Got it</button></div>
+      </div>
+    </div>
+    <!-- Import dialog -->
+    <div class="ov" id="ov-ch6-import">
+      <div class="dbox" style="width:420px;">
+        <div class="dtitle">📂 Import from Google Drive</div>
+        <div class="dbody">Paste your Google Drive folder URL:</div>
+        <div style="background:rgba(255,255,255,.04);border:1px solid var(--border2);border-radius:5px;padding:7px 10px;font-size:.76rem;color:var(--text2);font-family:'DM Mono',monospace;margin-bottom:12px;">https://drive.google.com/drive/folders/[folder-id]</div>
+        <div id="ch6-imp-btns" class="dbtns"><button class="dbtn sec" onclick="closeOv('ov-ch6-import')">Cancel</button><button class="dbtn grn ring" onclick="ch6_runImport()">Import</button></div>
+        <div id="ch6-imp-run" style="display:none;text-align:center;padding:10px;color:var(--teal2);font-size:.82rem;">⏳ Scanning folder...</div>
+        <div id="ch6-imp-done" style="display:none;">
+          <div style="background:rgba(46,125,50,.15);border:1px solid rgba(46,125,50,.3);border-radius:5px;padding:9px 11px;margin-bottom:9px;"><div style="font-weight:700;color:#a5d6a7;margin-bottom:5px;">✅ Import Complete</div><div style="font-size:.78rem;color:var(--text2);">1 new file imported — note_medica_acp_denial.gdoc<br>2 already imported — skipped</div></div>
+          <div class="dbtns"><button class="dbtn gold" onclick="ch6_closeImport()">OK</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="abar"><div class="ibanner" id="ch6-p2-banner">Click <strong>Note Pre-Processor → Import from Drive</strong> to import your saved Epic note. Click any sheet tab to learn what it does.</div></div>
+  </div>
+
+  <!-- Phase 3: Parsed_Review with Gemini -->
+  <div id="ch6-p3" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+    <div class="gs-wrap">
+      <div class="gs-top">
+        <div class="gs-logo"><svg width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" fill="#34a853"/></svg><span class="gs-title">Note Pre-Processor — Parsed_Review</span></div>
+        <span class="gs-mi npp" onclick="ch6_prmenu()">Note Pre-Processor ▾</span>
+        <div class="dd" id="dd-ch6-pr" style="top:30px;left:190px;min-width:250px;">
+          <div class="ddi hl" onclick="ch6_approve()">✅ 5. Approve &amp; Add to Engine</div>
+          <div class="ddi">❌ 6. Reject &amp; Clear</div>
+          <div class="ddi">💾 7. Save to Parser Settings</div>
+        </div>
+        <!-- Gemini button -->
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+          <button onclick="ch6_gemini()" style="background:linear-gradient(135deg,#4285f4,#ea4335,#fbbc05,#34a853);border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:12px;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;" title="Ask Gemini to review or fix fields">✨</button>
+          <span style="font-size:.7rem;color:#888;">Gemini</span>
+        </div>
+      </div>
+      <div style="flex:1;overflow-y:auto;background:#f4f6f9;">
+        <div style="background:var(--navy);color:var(--gold2);padding:7px 12px;font-size:.82rem;font-weight:700;border-bottom:2px solid var(--gold);">PARSED REVIEW — Review &amp; Edit Before Approving</div>
+        <div style="background:#e8f5e9;padding:5px 12px;font-size:.74rem;color:#2e7d32;">Review every field. Yellow = editable. Use Gemini (✨) to verify or fix fields before approving.</div>
+        <div class="pr-sec" style="margin-top:7px;">
+          <div class="pr-sec-hdr navy">PARSER STATUS</div>
+          <div class="pr-row"><div class="pr-lbl">Parse Status</div><div class="pr-val hi">PARSED v2.0 — New rule, full draft</div></div>
+          <div class="pr-row"><div class="pr-lbl">Confidence</div><div class="pr-val hi">HIGH (5/5)</div></div>
+          <div class="pr-row"><div class="pr-lbl">CARC / RARC</div><div class="pr-val" style="color:#c62828;font-weight:700;">129 / M51</div></div>
+          <div class="pr-row"><div class="pr-lbl">Payer</div><div class="pr-val">MEDICA INS MEDICARE</div></div>
+          <div class="pr-row"><div class="pr-lbl">Quality Score</div><div class="pr-val hi">88%</div></div>
+        </div>
+        <div class="pr-sec">
+          <div class="pr-sec-hdr orange">DRAFTED DENIAL LOOKUP ROW — edit if needed</div>
+          <div class="pr-row"><div class="pr-lbl">Scenario_Key</div><div class="pr-val hi">MCR_B|129|M51</div></div>
+          <div class="pr-row"><div class="pr-lbl">Category</div><div class="pr-val edit">Coding / Modifier / Bundling</div></div>
+          <div class="pr-row"><div class="pr-lbl">Root Cause</div><div class="pr-val edit">ACP 99497 denied CO-129 when billed same day as E/M without modifier 25</div></div>
+          <div class="pr-row"><div class="pr-lbl">Action</div><div class="pr-val edit">Verify ACP ≥16 min; add modifier 25 to E/M; route to Coding</div></div>
+          <div class="pr-row"><div class="pr-lbl">Owner</div><div class="pr-val edit">Coding</div></div>
+          <div class="pr-row"><div class="pr-lbl">Workflow Steps</div><div class="pr-val edit" style="white-space:pre-line;">1. Pull record — confirm ACP ≥16 min&#13;2. Confirm E/M separately identifiable&#13;3. Add modifier 25 to E/M&#13;4. Route to Coding&#13;5. Follow up 15 days</div></div>
+        </div>
+        <div class="pr-sec" style="margin-bottom:10px;">
+          <div class="pr-sec-hdr green">STEP 4 — APPROVE &amp; POST TO LIVE TABLES</div>
+          <div style="padding:7px 11px;font-size:.76rem;color:#444;">Review all fields. Use Gemini (✨) if any fields look incorrect or incomplete. When satisfied click APPROVE.</div>
+          <div style="padding:0 11px 9px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="sh-btn approve ring" onclick="ch6_approve()">✅ APPROVE &amp; ADD TO ENGINE</button>
+            <button class="sh-btn reject" style="background:#888;" onclick="ch6_gemini()">✨ Ask Gemini to Review</button>
+          </div>
+        </div>
+      </div>
+      <div class="gs-tabs"><div class="gs-tab">Note_Intake</div><div class="gs-tab on">Parsed_Review</div><div class="gs-tab">Parser_Settings</div></div>
+    </div>
+    <!-- Gemini dialog -->
+    <div class="ov" id="ov-ch6-gemini">
+      <div class="dbox" style="width:520px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <div style="background:linear-gradient(135deg,#4285f4,#ea4335,#fbbc05,#34a853);border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;font-weight:700;">✨</div>
+          <div class="dtitle" style="margin:0;">Ask Gemini to Review Your Fields</div>
+          <button class="dbtn sec" style="margin-left:auto;padding:3px 9px;font-size:.72rem;" onclick="closeOv('ov-ch6-gemini')">✕</button>
+        </div>
+        <div style="background:rgba(66,133,244,.08);border:1px solid rgba(66,133,244,.2);border-radius:7px;padding:11px 13px;font-size:.8rem;color:var(--text2);line-height:1.7;margin-bottom:12px;">
+          <strong style="color:var(--text);">How to use Gemini in Note Pre-Processor:</strong><br><br>
+          Click the <strong>✨ Gemini button</strong> (top right of the sheet) or use <strong>Extensions → Gemini</strong> to open the Gemini sidebar.<br><br>
+          <strong>What to ask Gemini:</strong>
+          <ul style="margin:8px 0 0 14px;line-height:2;">
+            <li><em>"Review row 2 in Parsed_Review — does the Category and Root Cause match the note content?"</em></li>
+            <li><em>"The Scenario Key is MCR_B|129|M51. What modifier is needed when billing ACP 99497 with an E/M on the same date?"</em></li>
+            <li><em>"Update the Workflow Steps field for row 2 to reflect the correct steps for a CO-129 ACP denial"</em></li>
+            <li><em>"The note mentions a referral issue — should the Owner be Coding or Auth Team?"</em></li>
+          </ul><br>
+          <strong>Gemini can propose specific field updates.</strong> Review its suggestions, make any edits directly in the yellow cells, then click Approve &amp; Add to Engine.
+        </div>
+        <div style="background:rgba(200,169,81,.08);border:1px solid var(--border2);border-radius:7px;padding:9px 12px;font-size:.78rem;color:var(--gold2);margin-bottom:12px;">
+          💡 <strong>Tip:</strong> Gemini works best when you paste the relevant portion of your Epic work note into the chat alongside your question. It can then verify the parser's output against the actual denial details.
+        </div>
+        <div class="dbtns"><button class="dbtn gold" onclick="closeOv('ov-ch6-gemini')">Got it</button></div>
+      </div>
+    </div>
+    <!-- Approve confirm -->
+    <div class="ov" id="ov-ch6-approve">
+      <div class="dbox" style="width:400px;">
+        <div class="dtitle">✅ Approve &amp; Add to Engine</div>
+        <div class="dbody"><strong>Scenario Key:</strong> MCR_B|129|M51<br><strong>Category:</strong> Coding / Modifier / Bundling<br><strong>Rule Type:</strong> Denial Lookup<br><br>This will update Denial_Lookup and Payer_Map in the AR Decision Engine.</div>
+        <div class="dbtns"><button class="dbtn sec" onclick="closeOv('ov-ch6-approve')">Cancel</button><button class="dbtn gold" onclick="ch6_confirmApprove()">Yes — Push to AR Engine</button></div>
+      </div>
+    </div>
+    <div class="ov" id="ov-ch6-pushed">
+      <div class="dbox" style="width:380px;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">🎉</div>
+        <div class="dtitle">Rule Pushed!</div>
+        <div class="dbody">Added to: <strong>Denial_Lookup, Payer_Map</strong><br>Logged to: <strong>Intake_History</strong><br><br>Re-run the Decision Engine to apply the new rule to existing claims.</div>
+        <div class="dbtns" style="justify-content:center;"><button class="dbtn gold" onclick="ch6_afterPush()">See Rule in Action →</button></div>
+      </div>
+    </div>
+    <div class="abar"><div class="ibanner">Review all drafted fields. Use ✨ Gemini to verify or fix anything. Click <strong>Approve &amp; Add to Engine</strong> when ready.</div></div>
+  </div>
+</div>
+
+
+<!-- CH7: RULE NOW ACTIVE -->
+<div class="screen" id="s-ch8">
+  <div class="gs-wrap">
+    <div class="gs-top"><div class="gs-logo"><svg width="18" height="18" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" fill="#0f9d58"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg><span class="gs-title">AR_Decision_Engine_Final</span></div>
+      <span class="gs-mi npp ring" onclick="ch7_menu()">AR Engine ▾</span>
+      <div class="dd" id="dd-ch7" style="top:30px;left:175px;min-width:230px;"><div class="ddi hl" onclick="ch7_run()">⚙️ Run Decision Engine</div><div class="ddi">📋 View Claim Resolver</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="cr-hdr" id="ch7-hdr" style="background:linear-gradient(135deg,#166534,#15803d);"><h2 id="ch7-title">⚙️ Re-run Decision Engine</h2><p id="ch7-sub">New rule in Denial_Lookup — re-run to apply to all existing claims.</p></div>
+      <div id="ch7-pre" class="cr-body">
+        <div style="background:#fff;border-radius:8px;border:1px solid #e0e8f0;padding:13px;margin-bottom:9px;"><div style="font-size:.82rem;font-weight:700;color:#1a3456;margin-bottom:6px;">Why re-run?</div><div style="font-size:.78rem;color:#444;line-height:1.7;">Pushing a rule to Denial_Lookup does not automatically re-evaluate existing claims. You must re-run the engine so the new rule applies to claims already in Claims_Database that showed "No Rule Matched".</div></div>
+        <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:7px;padding:9px 12px;font-size:.78rem;color:#856404;margin-bottom:10px;">⚠️ P101456783 currently shows "Review — No Rule Matched". After re-running it will show Coding/Modifier/Bundling guidance.</div>
+        <div style="text-align:center;"><button class="abtn gold ring" onclick="ch7_run()" style="padding:9px 22px;font-size:.87rem;">⚙️ AR Engine → Run Decision Engine</button></div>
+      </div>
+      <div id="ch7-post" class="cr-body" style="display:none;">
+        <div style="background:#e3f2fd;border-left:4px solid #1565c0;border-radius:0 7px 7px 0;padding:9px 12px;font-size:.8rem;color:#0d47a1;margin-bottom:9px;">✅ <strong>Rule now matched!</strong><br><span style="color:#c62828;">Before:</span> Review — No Rule Matched<br><span style="color:#2e7d32;">After:</span> Coding / Modifier / Bundling</div>
+        <div class="cr-sec">
+          <div class="cr-sec-hdr grn">✅ P101456783 — Rule Now Active!</div>
+          <div class="cr-grid">
+            <div class="cr-cell"><div class="cr-cell-lbl">Priority</div><div class="cr-cell-val"><span class="tier t2">Tier 2 — Medium</span></div></div>
+            <div class="cr-cell"><div class="cr-cell-lbl">Final Category</div><div class="cr-cell-val grn">Coding / Modifier / Bundling</div></div>
+          </div>
+          <div class="cr-full"><div class="cr-full-lbl">Final Root Cause</div><div class="cr-full-val">ACP code 99497 denied CO-129 when billed same day as E/M (99223) without modifier 25 on the E/M</div></div>
+          <div class="cr-full"><div class="cr-full-lbl">Final Action</div><div class="cr-full-val" style="white-space:pre-line;">1. Pull medical record — confirm ACP ≥16 min documented
+2. Confirm E/M is separately identifiable service
+3. Add modifier 25 to E/M code (99223)
+4. Route to Coding for resubmission
+5. Follow up 15 days post-resubmission</div></div>
+          <div class="cr-grid"><div class="cr-cell"><div class="cr-cell-lbl">Owner</div><div class="cr-cell-val grn">Coding</div></div><div class="cr-cell"><div class="cr-cell-lbl">Docs Needed</div><div class="cr-cell-val">Medical records, CMS ACP guidelines, E/M note</div></div></div>
+        </div>
+        <div style="background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:12px;margin-top:8px;font-size:.8rem;color:#166534;text-align:center;font-weight:600;">🎉 Training complete! Use chapter tabs above to review any section.</div>
+      </div>
+    </div>
+    <div class="gs-tabs"><div class="gs-tab" id="ch7-ei-tab">Epic_Import</div><div class="gs-tab on" id="ch7-cr-tab">Claim_Resolver</div><div class="gs-tab">Claims_Database</div><div class="gs-tab hi">Denial_Lookup ✓ new rule</div></div>
+  </div>
+  <div class="abar"><div class="ibanner" id="ch7-banner">Click <strong>AR Engine → Run Decision Engine</strong> to apply the new rule.</div></div>
+</div>
+
+</div><!-- screen-panel -->
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div id="sb-head"><h3>AR Decision Engine</h3><p id="sb-ch-name">Training Simulator v2</p></div>
+  <div id="sb-steps"></div>
+  <div id="sb-coach"><div class="coach-lbl">💡 Coach</div><div class="coach-t" id="coach-t">Select a chapter above to begin.</div><div class="coach-a" id="coach-a" style="display:none;"></div></div>
+</div>
+</div></div>
+<script>
+const WQ=[
+  ['P100234561','03/20/2026','93312','BCBS NEBRASKA MEDICARE','BMMC HVS','365.00'],
+  ['P100456783','03/04/2026','99231','BCBS NEBRASKA MEDICARE','GSH HOSP','139.00'],
+  ['P100890127','04/18/2026','99213','HUMANA MEDICARE','LKS HOSP','339.00'],
+  ['P101234561','06/24/2025','99213,99497','HUMANA MEDICARE','FLORENCE','261.00'],
+  ['P101456783','04/01/2026','99223,99497','MEDICA INS MEDICARE','LKS HOSP','490.00'],
+];
+const CLAIMS={
+  'P100234561':{payor:'BCBS NEBRASKA MEDICARE',carc:'16',rarc:'M20',cpt:'93312',aging:'55',billed:'365.00',tier:'t3',tierLbl:'Tier 3 — Medium',cat:'Timely Filing',root:'Claim submitted past timely filing limit for BCBS Nebraska Medicare.',action:'1. Verify submission date in clearinghouse.\n2. File appeal with proof if within appeal window.\n3. Adjust off per write-off workflow if past window.',owner:'AR',docs:'Clearinghouse confirmation, original claim receipt'},
+  'P100456783':{payor:'BCBS NEBRASKA MEDICARE',carc:'96',rarc:'N386',cpt:'99231',aging:'40',billed:'139.00',tier:'t2',tierLbl:'Tier 2 — Medium',cat:'Non-Covered',root:'Service 99231 not covered per BCBS Nebraska Medicare plan for this date of service.',action:'1. Verify patient plan benefits for DOS.\n2. If covered, appeal with medical necessity.\n3. If non-covered, bill patient or write off.',owner:'AR / Coding',docs:'Plan benefits documentation, medical necessity letter'},
+  'P101234561':{payor:'HUMANA MEDICARE',carc:'129',rarc:'M51',cpt:'99213,99497',aging:'60',billed:'261.00',tier:'t2',tierLbl:'Tier 2 — Medium',cat:'Coding / Modifier / Bundling',root:'ACP code 99497 denied CO-129 when billed same day as E/M (99213) without modifier 25.',action:'1. Pull medical record — confirm ACP ≥16 min\n2. Confirm E/M is separately identifiable\n3. Add modifier 25 to E/M code\n4. Route to Coding for resubmission',owner:'Coding',docs:'Medical records, CMS ACP bundling guidelines'},
+  'P101456783':{noRule:true},
+};
+const CHAPTERS=[
+  {id:1,name:'🗺️ Tool Overview',steps:['AR Decision Engine — daily worklist','Epic_Import, Claim_Resolver, Claims_Database','Denial_Lookup, Override_Rules, Worked_Claims','Note Pre-Processor — rule-building tool','Functions 2, 3, 5, 8 used most often','Functions 4, 9-15 for maintenance/batch'],
+   hints:{'1-0':{t:'The AR Decision Engine is your daily worklist. You paste your Epic WQ here, run the engine, and work your claims from Claim_Resolver.',a:'Review the AR Decision Engine section'},'1-1':{t:'Epic_Import is where you paste. Claim_Resolver is where you work. Claims_Database is the engine output — do not edit it manually.',a:'Review each tab description'},'1-2':{t:'Denial_Lookup is the rule library. Override_Rules handles special cases like timely filing. Worked_Claims is the permanent audit log.',a:'Review remaining tabs'},'1-3':{t:'Note Pre-Processor is only used when the AR Engine shows No Rule Matched. It is not part of the daily workflow.',a:'Review the Note Pre-Processor section'},'1-4':{t:'Functions 3 (Process All Queued), 5 (Approve & Add to Engine), and 8 (Import from Drive) are the three you will use most.',a:'Review the starred functions'},'1-5':{t:'Functions 4, 9-15 are for maintenance, batch operations, and troubleshooting. You will use them occasionally.',a:'Proceed to Multi-User & Stacking'}}},
+  {id:0,name:'📝 Save Note',steps:['Open Google Drive','Click + New → Google Docs','Paste Epic note','File → Move to shared folder','Confirm move'],
+   hints:{'0-0':{t:'Google Drive is open. Click the pulsing + New button.',a:'Click + New'},'0-1':{t:'Click Google Docs from the dropdown.',a:'Click Google Docs'},'0-2':{t:'Paste your Epic work note — include invoice, payer, CARC/RARC, denial details, and research.',a:'Paste note → File → Move'},'0-3':{t:'Click Move here to save to the shared AR folder.',a:'Click Move here'},'0-4':{t:'Note saved! Proceed to Multi-User & Stacking to learn how to paste your WQ correctly.',a:'Proceed to Multi-User & Stacking'}}},
+  {id:2,name:'👥 Multi-User & Stacking',steps:['Each rep stacks WQ under the previous','Always include your header row','Engine separates claims by block','Different invoices — auto-claimed, no dialog','Duplicate invoice — dialog fires once','YES = leave with original rep','NO = transfer to you','Per-rep dropdown isolation'],
+   hints:{'1-0':{t:'Multiple reps paste their Epic export one under the other in Epic_Import. Each paste must include the header row — this is how the engine separates blocks.',a:'Review the stacking diagram'},'1-1':{t:'The header row (Invoice Num, Payor, Reason Code List, etc.) must always be included when pasting. Never paste data rows only.',a:'Review header row requirement'},'1-2':{t:'The engine scans for header rows to detect block boundaries. Each block is claimed for whoever ran the engine.',a:'Click See what happens'},'1-3':{t:'When reps have completely different invoice numbers, no dialog appears. All rows claimed automatically.',a:'Review the no-overlap result'},'1-4':{t:'If the same invoice number appears in both blocks, a dialog fires once for that invoice only.',a:'Click See the duplicate dialog'},'1-5':{t:'YES = leave with original rep. Invoice stays with them and is not added to your queue.',a:'Try clicking YES'},'1-6':{t:'NO = transfer to you. Original claim is released and you take ownership.',a:'Try clicking NO'},'1-7':{t:'Each rep has their own hidden sheet. The dropdown always shows only your claims when you open the spreadsheet.',a:'Review per-rep sheet info'}}},
+  {id:3,name:'🏥 Epic WQ Export',steps:['Click Export All ▾','Export All workqueue items','Save As → Save','Open AR Decision Engine','Paste with header row → Run Engine'],
+   hints:{'2-0':{t:'Click the blue Export All ▾ button top-right in the Epic WQ toolbar.',a:'Click Export All ▾'},'2-1':{t:'Click Export All workqueue items.',a:'Click Export All workqueue items'},'2-2':{t:'A Save As dialog appeared. Click Save.',a:'Click Save'},'2-3':{t:'Open AR_Decision_Engine_Final in Google Sheets → Epic_Import tab.',a:'Click Open AR Decision Engine'},'2-4':{t:'Paste (Ctrl+V) under existing rows. Always include your header row. Then run the engine.',a:'Paste then click Run Engine'}}},
+  {id:4,name:'⚙️ Run Engine',steps:['Click AR Engine menu','Click Run Decision Engine','Engine processes claims','Review completion summary','Go to Claim Resolver'],
+   hints:{'3-0':{t:'Click the pulsing AR Engine menu in the menu bar.',a:'Click AR Engine ▾'},'3-1':{t:'Click Run Decision Engine. The engine reads all blocks, claims your rows, and applies all rules.',a:'Click Run Decision Engine'},'3-2':{t:'Watch the log output as claims are processed.',a:'Watch the log'},'3-3':{t:'Engine complete! Your claims are assigned.',a:'Click Go to Claim Resolver'},'3-4':{t:'Go to Claim_Resolver tab to start working.',a:'Select a claim from the dropdown'}}},
+  {id:5,name:'🔍 Claim Resolver',steps:['Select invoice from dropdown','Review Claim Details','Read Decision Engine output','Click an action button','Try the No Rule example'],
+   hints:{'4-0':{t:'Your dropdown shows only your claimed invoices. Select one.',a:'Click the dropdown'},'4-1':{t:'Claim Details: payor, CARC, RARC, CPT, aging days, billed amount.',a:'Review Claim Details'},'4-2':{t:'Decision Engine output: Priority Tier, Category, Root Cause, Action, Owner, Docs Needed.',a:'Follow the Final Action steps'},'4-3':{t:'Each button shows a confirm dialog. Click Cancel to abort or Yes to proceed.',a:'Try an action button'},'4-4':{t:'Select the No Rule invoice to see the Fix Missing Rule path.',a:'Select the No Rule invoice'}}},
+  {id:6,name:'✅ Working a Claim',steps:['Learn Resolve Override','Learn Mark as Worked','Learn Release Claim','Understand confirm dialogs'],
+   hints:{'5-0':{t:'Resolve Override: for claims where an Override Rule drove the output. Logs to Worked_Claims.',a:'Review Resolve Override'},'5-1':{t:'Mark as Worked: most common. Use after completing all work in Epic. Cannot be undone.',a:'Review Mark as Worked'},'5-2':{t:'Release Claim: returns claim to shared pool. Claims also auto-release after 10 hours.',a:'Review Release Claim'},'5-3':{t:'Every button shows a confirm dialog. Cancel aborts with no changes. Yes runs the action.',a:'Review all three buttons'}}},
+  {id:7,name:'🚨 Fix Missing Rule',steps:['Claim Resolver — No Rule Matched','Option A: Note Pre-Processor','Option B: Search Denial_Lookup','Import note from Drive','Process All Queued Rows','Click sheet tabs to learn each one','Use Gemini to verify fields','Approve & Add to Engine'],
+   hints:{'6-0':{t:'Claim Resolver shows the exact Scenario Key it searched for. Two options: create a new rule via Note Pre-Processor, or search Denial_Lookup for a similar existing rule.',a:'Click Option A or Option B'},'6-1':{t:'Option A: Open Note Pre-Processor to create a rule from your Epic work note.',a:'Click Option A — Note Pre-Processor'},'6-2':{t:'Option B: Go to Denial_Lookup and search for a related Scenario Key (same CARC, different payer). You may find a template you can adapt.',a:'Click Option B — Search Denial_Lookup'},'6-3':{t:'Import your saved Epic note from Google Drive using Import from Drive.',a:'Click Note Pre-Processor → Import from Drive'},'6-4':{t:'Click Process All Queued Rows to generate a rule draft from the imported note.',a:'Click Process All Queued Rows'},'6-5':{t:'Click any sheet tab to see what that sheet does and when to use it.',a:'Click a sheet tab to learn about it'},'6-6':{t:'Use the ✨ Gemini button to verify fields or ask Gemini to fix incorrect workflow steps or coding guidance.',a:'Click ✨ Gemini to review'},'6-7':{t:'When all fields look correct, click Approve & Add to Engine. A confirm dialog appears.',a:'Click Approve & Add to Engine'}}},
+  {id:8,name:'🔄 Rule Now Active',steps:['New rule in Denial_Lookup','Re-run Decision Engine','Claim now matched','Rule live for all future imports'],
+   hints:{'7-0':{t:'The new rule is in Denial_Lookup. Re-run the engine to apply it.',a:'Click AR Engine → Run Decision Engine'},'7-1':{t:'Engine re-processes all claims using updated rules.',a:'Wait for engine'},'7-2':{t:'The claim now shows correct category and workflow steps.',a:'Review updated output'},'7-3':{t:'Training complete! Use chapter tabs to review any section.',a:'Training complete!'}}},
+];
+let curCh=0,curStep=0,done={};
+function goChapter(n){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.ch-pill').forEach(p=>p.classList.remove('on'));
+  const ch=CHAPTERS[n];if(!ch)return;
+  document.getElementById('s-ch'+n).classList.add('on');
+  document.getElementById('p'+n).classList.add('on');
+  curCh=n;curStep=0;
+  document.getElementById('sb-ch-name').textContent=ch.name;
+  buildSteps();updateCoach();closeAllDd();closeAllOv();
+  // ch1 = Tool Overview — static content, no reset needed
+  if(n===2)ch5Reset();   // MultiUser now ch2
+  if(n===3)ch1Reset();   // Epic now ch3
+  if(n===4)ch2Reset();   // Run now ch4
+  if(n===5)ch3Reset();   // Resolver now ch5
+  if(n===7){ch6Show('1');buildCh6Grid(false);}
+  if(n===8)ch7Reset();
+}
+function buildSteps(){
+  const ch=CHAPTERS[curCh],sb=document.getElementById('sb-steps');
+  if(!ch||!sb)return;sb.innerHTML='';
+  ch.steps.forEach((s,i)=>{
+    const k=curCh+'-'+i,isDone=!!done[k],isActive=i===curStep;
+    const d=document.createElement('div');
+    d.className='step-item'+(isActive?' active':'')+(isDone?' done':'');
+    d.onclick=()=>{curStep=i;updateCoach();buildSteps();};
+    d.innerHTML='<div class="si-num">'+(isDone?'✓':(i+1))+'</div><div class="si-txt">'+s+'</div>';
+    sb.appendChild(d);
+  });
+}
+function updateCoach(){
+  const h=CHAPTERS[curCh]?.hints?.[curCh+'-'+curStep];
+  document.getElementById('coach-t').textContent=h?h.t:'Follow the steps on the left.';
+  const a=document.getElementById('coach-a');
+  if(h?.a){a.textContent='👆 '+h.a;a.style.display='block';}else a.style.display='none';
+}
+function markDone(step){
+  done[curCh+'-'+step]=true;
+  const ch=CHAPTERS[curCh];
+  if(step===curStep&&curStep<ch.steps.length-1)curStep=step+1;
+  buildSteps();updateCoach();
+}
+function closeAllDd(){document.querySelectorAll('.dd').forEach(d=>d.classList.remove('open'));}
+function closeAllOv(){document.querySelectorAll('.ov').forEach(o=>o.classList.remove('open'));}
+function closeOv(id){document.getElementById(id)?.classList.remove('open');}
+function toast(msg){
+  const t=document.getElementById('toast');if(!t)return;
+  t.textContent=msg;t.style.display='block';
+  clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',2600);
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.dd')&&!e.target.closest('[onclick*="menu"]')&&!e.target.closest('[onclick*="Menu"]')&&!e.target.closest('[onclick*="export"]')&&!e.target.closest('.epic-ebtn'))closeAllDd();
+  if(!e.target.closest('.ctx')&&!e.target.closest('[onclick*="rightClick"]'))document.querySelectorAll('.ctx').forEach(c=>c.style.display='none');
+});
+// CH0
+function ch0_new(e){if(e)e.stopPropagation();document.getElementById('dd-ch0-new').classList.toggle('open');markDone(0);}
+function ch0_selectDoc(){closeAllDd();const nd=document.getElementById('ch0-newdoc');if(nd)nd.style.display='flex';document.getElementById('ov-ch0-doc').classList.add('open');markDone(1);markDone(2);document.getElementById('ch0-banner').innerHTML='Google Doc open! Paste your note, then click <strong>File → Move</strong>.';}
+function ch0_filemenu(){const m=document.getElementById('ch0-fmdd');m.style.display=m.style.display==='block'?'none':'block';markDone(2);}
+function ch0_move(){document.getElementById('ch0-fmdd').style.display='none';document.getElementById('ov-ch0-move').classList.add('open');markDone(3);}
+function ch0_confirmMove(){closeOv('ov-ch0-move');closeOv('ov-ch0-doc');markDone(4);document.getElementById('ch0-banner').innerHTML='Note saved! Proceed to Epic WQ Export.';toast('Document moved to shared folder!');}
+// CH1
+function ch1Reset(){
+  document.getElementById('ch1-epic').style.display='flex';
+  document.getElementById('ch1-gs').style.display='none';
+  buildCh1List();buildCh1Grid('old');
+  const pb=document.getElementById('ch1-paste-btn');pb.disabled=true;pb.className='abtn dim';
+  const rb=document.getElementById('ch1-run-btn');rb.disabled=true;rb.className='abtn dim';
+  document.getElementById('ch1-banner').textContent='Epic WQ is open. Click the blue Export All ▾ button.';
+}
+function buildCh1List(){
+  const c=document.getElementById('ch1-invlist');if(!c)return;c.innerHTML='';
+  WQ.forEach((r,i)=>{
+    const d=document.createElement('div');d.className='epic-row'+(i===0?' sel':'');
+    d.innerHTML='<div class="ic" style="width:105px;color:#1565c0;">'+r[0]+'</div><div class="ic" style="width:78px;">'+r[1]+'</div><div class="ic" style="width:55px;font-weight:600;">'+r[2]+'</div><div class="ic" style="flex:1;">'+r[3]+'</div><div class="ic" style="width:95px;">'+r[4]+'</div><div class="ic" style="width:58px;">$'+r[5]+'</div>';
+    c.appendChild(d);
+  });
+}
+function buildCh1Grid(state){
+  const g=document.getElementById('ch1-de-grid');if(!g)return;g.innerHTML='';
+  const hdr=document.createElement('div');hdr.className='xr hdr';
+  hdr.innerHTML='<div class="xc rn" style="color:#fff;">3</div>'+['Invoice Num','Svc Date','CPT','Payor','Dept'].map(c=>'<div class="xc w100" style="color:#fff;">'+c+'</div>').join('')+'<div class="xc wf" style="color:#fff;">...</div>';
+  g.appendChild(hdr);
+  if(state==='old'){
+    [['P100234561','03/20/2026','93312','BCBS NEBRASKA MEDICARE','BMMC HVS'],
+     ['P100456783','03/04/2026','99231','BCBS NEBRASKA MEDICARE','GSH HOSP']].forEach((r,i)=>{
+      const d=document.createElement('div');d.className='xr';
+      d.innerHTML='<div class="xc rn">'+(i+4)+'</div>'+r.map(c=>'<div class="xc w100">'+c+'</div>').join('')+'<div class="xc wf">...</div>';
+      g.appendChild(d);
+    });
+    const m=document.createElement('div');m.className='xr';m.innerHTML='<div class="xc rn" style="color:#aaa;">6</div><div class="xc wf" style="color:#aaa;font-style:italic;">... more rows ...</div>';g.appendChild(m);
+  }else{
+    WQ.forEach((r,i)=>{
+      const d=document.createElement('div');d.className='xr new-r';
+      d.innerHTML='<div class="xc rn">'+(i+4)+'</div><div class="xc w100">'+r[0]+'</div><div class="xc w100">'+r[1]+'</div><div class="xc w100">'+r[2]+'</div><div class="xc w100">'+r[3]+'</div><div class="xc w100">'+r[4]+'</div><div class="xc wf">...</div>';
+      g.appendChild(d);
+    });
+  }
+}
+function ch1_export(e){document.getElementById('dd-ch1-exp').classList.toggle('open');markDone(0);}
+function ch1_doExport(){closeAllDd();markDone(1);document.getElementById('ov-ch1-saveas').classList.add('open');}
+function ch1_save(){closeOv('ov-ch1-saveas');markDone(2);toast('Saved!');setTimeout(()=>document.getElementById('ov-ch1-next').classList.add('open'),350);}
+function ch1_openGS(){closeOv('ov-ch1-next');markDone(3);document.getElementById('ch1-epic').style.display='none';const gs=document.getElementById('ch1-gs');gs.style.display='flex';gs.style.flexDirection='column';buildCh1Grid('new');document.getElementById('ch1-banner').innerHTML='AR Decision Engine open. Epic data ready to paste. Click <strong>Paste Epic data</strong>.';const pb=document.getElementById('ch1-paste-btn');pb.disabled=false;pb.className='abtn gold ring';}
+function ch1_armenu(){document.getElementById('dd-ch1-ar').classList.toggle('open');}
+function ch1_paste(){buildCh1Grid('new');markDone(4);document.getElementById('ch1-banner').innerHTML='Data pasted! Click <strong>Run Engine</strong>.';const pb=document.getElementById('ch1-paste-btn');pb.className='abtn dim';pb.disabled=true;const rb=document.getElementById('ch1-run-btn');rb.disabled=false;rb.className='abtn navy ring';toast('Pasted!');}
+function ch1_run(){markDone(4);toast('Running engine...');setTimeout(()=>goChapter(2),400);}
+// CH2
+function ch2Reset(){document.getElementById('ch2-proc').textContent='0';document.getElementById('ch2-matched').textContent='0';document.getElementById('ch2-log').innerHTML='<div style="color:#888;">Waiting for engine run...</div>';document.getElementById('ch2-banner').innerHTML='Click <strong>AR Engine → Run Decision Engine</strong>.';}
+function ch2_menu(){document.getElementById('dd-ch2').classList.toggle('open');markDone(0);}
+function ch2_run(){
+  closeAllDd();markDone(1);
+  const log=document.getElementById('ch2-log');log.innerHTML='';
+  const lines=['[INFO] Decision Engine v2.0 starting...','[INFO] Reading Epic_Import — 45 rows in 2 blocks','[RULE] P100234561 → BCB|16|M20 → Timely Filing','[RULE] P100456783 → BCB|96|N386 → Non-Covered','[RULE] P101234561 → HUM|129|M51 → Coding/Modifier','[WARN] P101456783 → MCR_B|129|M51 → No rule found','[OK]   Claims_Database updated — 45 rows written','[OK]   Claimed by: you@commonspirit.org','[OK]   Decision Engine complete — 38 matched / 7 no-rule'];
+  let i=0;const t=setInterval(()=>{
+    if(i>=lines.length){clearInterval(t);markDone(2);document.getElementById('ch2-proc').textContent='45';document.getElementById('ch2-matched').textContent='38';setTimeout(()=>document.getElementById('ov-ch2-done').classList.add('open'),500);return;}
+    const p=document.createElement('div');p.style.color=lines[i].includes('WARN')?'#f59e0b':lines[i].includes('OK')?'#4ade80':lines[i].includes('RULE')?'#93c5fd':'#94a3b8';p.textContent=lines[i];log.appendChild(p);log.scrollTop=log.scrollHeight;i++;
+  },200);
+}
+function ch2_done(){closeOv('ov-ch2-done');markDone(4);goChapter(3);}
+// CH3
+function ch3Reset(){document.getElementById('ch3-body').innerHTML='<div style="text-align:center;padding:28px;color:#999;">Select an invoice above.</div>';document.getElementById('ch3-btns').style.display='none';document.getElementById('ch3-fixbtn').style.display='none';}
+function ch3_select(){
+  const inv=document.getElementById('ch3-sel').value;
+  const body=document.getElementById('ch3-body');const btns=document.getElementById('ch3-btns');const fix=document.getElementById('ch3-fixbtn');
+  if(!inv){body.innerHTML='<div style="text-align:center;padding:28px;color:#999;">Select an invoice above.</div>';btns.style.display='none';fix.style.display='none';return;}
+  const d=CLAIMS[inv];if(!d)return;markDone(0);
+  if(d.noRule){fix.style.display='block';btns.style.display='none';markDone(4);body.innerHTML='<div class="norule">⚠️ <strong>No matching scenario found for: MCR_B|129|M51</strong><br>Final Category: <strong>Review — No Rule Matched</strong></div><div class="cr-sec"><div class="cr-sec-hdr">Claim Details</div><div class="cr-grid"><div class="cr-cell"><div class="cr-cell-lbl">Invoice</div><div class="cr-cell-val">'+inv+'</div></div><div class="cr-cell"><div class="cr-cell-lbl">Payor</div><div class="cr-cell-val">MEDICA INS MEDICARE</div></div><div class="cr-cell"><div class="cr-cell-lbl">CARC / RARC</div><div class="cr-cell-val red">129 / M51</div></div><div class="cr-cell"><div class="cr-cell-lbl">CPT</div><div class="cr-cell-val">99223, 99497</div></div></div></div>';document.getElementById('ch3-banner').innerHTML='No rule for MCR_B|129|. Click <strong>Fix Missing Rule →</strong>';return;}
+  fix.style.display='none';btns.style.display='flex';
+  body.innerHTML='<div class="cr-sec"><div class="cr-sec-hdr">Claim Details</div><div class="cr-grid"><div class="cr-cell"><div class="cr-cell-lbl">Invoice</div><div class="cr-cell-val">'+inv+'</div></div><div class="cr-cell"><div class="cr-cell-lbl">Payor</div><div class="cr-cell-val">'+d.payor+'</div></div><div class="cr-cell"><div class="cr-cell-lbl">CARC / RARC</div><div class="cr-cell-val red">'+d.carc+' / '+d.rarc+'</div></div><div class="cr-cell"><div class="cr-cell-lbl">CPT</div><div class="cr-cell-val">'+d.cpt+'</div></div><div class="cr-cell"><div class="cr-cell-lbl">Aging</div><div class="cr-cell-val gold">'+d.aging+' days</div></div><div class="cr-cell"><div class="cr-cell-lbl">Billed</div><div class="cr-cell-val">$'+d.billed+'</div></div></div></div><div class="cr-sec"><div class="cr-sec-hdr grn">Decision Engine Output</div><div class="cr-grid"><div class="cr-cell"><div class="cr-cell-lbl">Priority</div><div class="cr-cell-val"><span class="tier '+d.tier+'">'+d.tierLbl+'</span></div></div><div class="cr-cell"><div class="cr-cell-lbl">Category</div><div class="cr-cell-val grn">'+d.cat+'</div></div></div><div class="cr-full"><div class="cr-full-lbl">Root Cause</div><div class="cr-full-val">'+d.root+'</div></div><div class="cr-full"><div class="cr-full-lbl">Final Action</div><div class="cr-full-val" style="white-space:pre-line;">'+d.action+'</div></div><div class="cr-grid"><div class="cr-cell"><div class="cr-cell-lbl">Owner</div><div class="cr-cell-val grn">'+d.owner+'</div></div><div class="cr-cell"><div class="cr-cell-lbl">Docs Needed</div><div class="cr-cell-val">'+d.docs+'</div></div></div></div>';
+  markDone(1);markDone(2);document.getElementById('ch3-banner').textContent='Decision Engine output loaded. Use the action buttons to work this claim.';
+}
+function ch3_action(type){
+  const titles={resolve:'✓ Resolve Override',worked:'📋 Mark as Worked',release:'↩ Release Claim'};
+  const bodies={resolve:'Are you sure you want to resolve the override? This will replace the override output with the standard denial lookup result.',worked:'Are you sure you want to mark this claim as worked? This logs it to Worked_Claims permanently and removes it from your queue. This cannot be undone.',release:'Are you sure you want to release this claim? It will return to the shared pool for another rep to claim.'};
+  document.getElementById('ch3-act-title').textContent=titles[type];
+  document.getElementById('ch3-act-body').textContent=bodies[type];
+  document.getElementById('ov-ch3-action').classList.add('open');markDone(3);
+}
+// CH5
+function ch5Reset(){
+  document.getElementById('ch5-p1').style.display='flex';document.getElementById('ch5-p1').style.flexDirection='column';
+  document.getElementById('ch5-p2').style.display='none';document.getElementById('ch5-p3').style.display='none';
+  document.getElementById('ch5-dup-result').style.display='none';
+  document.getElementById('ch5-banner').innerHTML='Two reps have pasted their WQ exports. Click to see what happens.';
+}
+function ch5_showResult(){markDone(1);markDone(2);document.getElementById('ch5-p1').style.display='none';const p2=document.getElementById('ch5-p2');p2.style.display='flex';p2.style.flexDirection='column';document.getElementById('ch5-banner').textContent='No dialog for different invoices — each rep gets their own claims automatically.';}
+function ch5_showDup(){markDone(3);document.getElementById('ch5-p2').style.display='none';const p3=document.getElementById('ch5-p3');p3.style.display='flex';p3.style.flexDirection='column';document.getElementById('ch5-banner').textContent='Duplicate invoice found. Click YES or NO to see what happens.';}
+function ch5_dupYes(){
+  markDone(4);
+  document.getElementById('ch5-dup-result').style.display='block';
+  document.getElementById('ch5-dup-result-hdr').textContent='✅ YES — Invoice Stays with Rep A';
+  document.getElementById('ch5-dup-result-hdr').className='cr-sec-hdr grn';
+  document.getElementById('ch5-dup-result-body').innerHTML='INV-001234 remains claimed by <strong>Rep A</strong>. Rep B\'s row for this invoice is left unclaimed — it does NOT appear in Rep B\'s dropdown.<br><br>All other non-duplicate invoices in Rep B\'s WQ were automatically claimed for Rep B with no dialog.';
+  toast('YES — INV-001234 stays with Rep A');
+}
+function ch5_dupNo(){
+  markDone(5);
+  document.getElementById('ch5-dup-result').style.display='block';
+  document.getElementById('ch5-dup-result-hdr').textContent='🔁 NO — Invoice Transferred to Rep B';
+  document.getElementById('ch5-dup-result-hdr').className='cr-sec-hdr';
+  document.getElementById('ch5-dup-result-hdr').style.background='#4a1a6a';
+  document.getElementById('ch5-dup-result-body').innerHTML='Rep A\'s claim on INV-001234 is <strong>released</strong> (Claimed_By cleared, Status → RELEASED).<br>Rep B\'s row for INV-001234 is now <strong>claimed by Rep B</strong>.<br><br>The invoice moves to Rep B\'s dropdown and is removed from Rep A\'s.';
+  toast('NO — INV-001234 transferred to Rep B');
+}
+// CH6
+let ch6Phase=1;
+const CH6_TAB_INFO={
+  intake:{title:'📋 Note_Intake — What it does',body:'<strong>Purpose:</strong> The main queue where all imported notes land before processing.<br><br><strong>When to use:</strong> After importing a note from Google Drive. Each row represents one work note. The Status column shows whether a note is Queued (ready to process), Processed (rule drafted), or Approved (pushed to engine).<br><br><strong>Key columns:</strong> Intake_ID, Source_File_Name, Status, CARC, Payer_Group, Raw_Note excerpt, Quality_Score.<br><br><strong>Action:</strong> Select queued rows and use Process Selected Rows or Process All Queued Rows from the menu.'},
+  pr:{title:'🔍 Parsed_Review — What it does',body:'<strong>Purpose:</strong> Shows the engine drafted rule for each processed note. Review, edit, and approve or reject before it goes live.<br><br><strong>When to use:</strong> After processing queued rows. Review every yellow cell — these are the exact values written to Denial_Lookup and Payer_Map.<br><br><strong>Key fields to check:</strong> Scenario_Key (must match what Claim Resolver shows), Category, Root Cause, Recommended Action, Owner, Workflow Steps.<br><br><strong>Gemini tip:</strong> Use the ✨ Gemini button to ask Gemini to verify fields against your work note, or to suggest the correct modifier or coding guidance for a specific denial.'},
+  ps:{title:'⚙️ Parser_Settings — What it does',body:'<strong>Purpose:</strong> The keyword library. Contains all trigger keywords, rule templates, and engine configuration. When a note is processed, the parser searches this sheet to match CARC codes, payer names, and denial keywords to existing templates.<br><br><strong>When to use:</strong> Use Search Parser Settings from the menu to find existing keywords. Use Save to Parser Settings after approving a rule to teach the parser new keywords for future notes.<br><br><strong>Important:</strong> Do not manually edit this sheet. Use the menu functions instead.<br><br><strong>Menu 10 — Backfill Missing Keywords:</strong> Scans all approved rules and adds any missing keywords automatically.'},
+  ih:{title:'📜 Intake_History — What it does',body:'<strong>Purpose:</strong> A permanent log of every note that was approved and pushed to the AR Engine. Acts as an audit trail — see when a rule was created, what note it came from, and who approved it.<br><br><strong>When to use:</strong> Verify a rule was pushed, find when a specific CARC/payer combination was last updated, or check if a similar rule already exists before creating a new one.<br><br><strong>Key columns:</strong> Date Added, Note Title, Scenario_Key, Category, CARC, RARC, Payer Group, Added to Tables, Duplicate Found.'},
+  er:{title:'🔗 Existing_Rules — What it does',body:'<strong>Purpose:</strong> A read-only mirror of the current Denial_Lookup and Override_Rules tables from the AR Decision Engine. Used by the parser to check for duplicate rules before approving a new one.<br><br><strong>When to use:</strong> Browse this sheet to see all currently active rules. If you are not sure whether a rule already exists for a Scenario Key, search here first.<br><br><strong>Menu 11 — Sync Existing Rules from AR Engine:</strong> Refreshes this sheet with the latest rules from the live AR Engine. Run this if the sheet looks outdated.'},
+  db:{title:'📊 Dashboard — What it does',body:'<strong>Purpose:</strong> Summary view showing processing stats — how many notes are queued, processed, approved, rejected, and duplicates found. Also shows quality score distribution and recent activity.<br><br><strong>When to use:</strong> Check this for a quick overview of the parser workload and output quality.<br><br><strong>Menu 12 — Refresh Dashboard:</strong> Updates all dashboard counts. Run this after a batch import or processing session.'}
+};
+function ch6Show(n){
+  ['1','1b','2','3'].forEach(id=>{
+    const e=document.getElementById('ch6-p'+id);
+    if(e){e.style.display=e.id==='ch6-p'+n?'flex':'none';if(e.id==='ch6-p'+n)e.style.flexDirection='column';}
+  });
+  ch6Phase=n;
+}
+function buildCh6Grid(hasNew){
+  const g=document.getElementById('ch6-intake-grid');if(!g)return;g.innerHTML='';
+  const hdr=document.createElement('div');hdr.className='xr hdr';
+  hdr.innerHTML='<div class="xc rn" style="color:#fff;">1</div>'+['Intake_ID','Source_File','Status','CARC','Payer_Group'].map(c=>'<div class="xc w100" style="color:#fff;font-size:.67rem;">'+c+'</div>').join('')+'<div class="xc wf" style="color:#fff;">...</div>';
+  g.appendChild(hdr);
+  [['IMP-001','note_humana_timely.gdoc','Processed','16','HUM'],['IMP-002','note_bcbs_dup.gdoc','Processed','18','BCB']].forEach((r,i)=>{
+    const d=document.createElement('div');d.className='xr';
+    d.innerHTML='<div class="xc rn">'+(i+2)+'</div>'+r.map(c=>'<div class="xc w100">'+c+'</div>').join('')+'<div class="xc wf">...</div>';
+    g.appendChild(d);
+  });
+  if(hasNew){
+    const d=document.createElement('div');d.className='xr new-r';
+    d.innerHTML='<div class="xc rn" style="color:#2e7d32;font-weight:700;">4</div><div class="xc w100" style="color:#2e7d32;font-weight:700;">IMP-003</div><div class="xc w100" style="color:#2e7d32;font-weight:700;">note_medica_acp.gdoc</div><div class="xc w100" style="color:#e65100;font-weight:700;">Queued</div><div class="xc w100" style="color:#c62828;font-weight:700;">129</div><div class="xc w100">MCR_B</div><div class="xc wf" style="color:#2e7d32;font-size:.67rem;">← NEW</div>';
+    g.appendChild(d);
+  }
+}
+function buildCh6DenialGrid(){
+  const g=document.getElementById('ch6-denial-grid');if(!g)return;g.innerHTML='';
+  const cols=['Scenario_Key','Category','Root_Cause','Owner','Priority'];
+  const hdr=document.createElement('div');hdr.className='xr hdr';
+  hdr.innerHTML='<div class="xc rn" style="color:#fff;">1</div>'+cols.map(c=>'<div class="xc w120" style="color:#fff;font-size:.67rem;">'+c+'</div>').join('')+'<div class="xc wf" style="color:#fff;">...</div>';
+  g.appendChild(hdr);
+  [['HUM|129|M51','Coding / Modifier / Bundling','ACP denied CO-129 - no modifier 25 on E/M - Humana','Coding','Medium'],
+   ['ALL|129|','Coding / Modifier / Bundling','Claim not covered per NCCI bundling edit','Coding','Medium'],
+   ['BCB|96|N386','Non-Covered','Service not covered per plan for this DOS','AR / Coding','Low'],
+  ].forEach((r,i)=>{
+    const d=document.createElement('div');
+    d.className='xr'+(r[0].startsWith('HUM|129')?'':''+(i%2?' warn-r':''));
+    if(r[0].startsWith('HUM|129'))d.style.background='#e3f2fd';
+    d.innerHTML='<div class="xc rn">'+(i+2)+'</div>'+r.map(c=>'<div class="xc w120">'+c+'</div>').join('')+'<div class="xc wf">...</div>';
+    g.appendChild(d);
+  });
+  const note=document.createElement('div');note.className='xr';
+  note.innerHTML='<div class="xc rn" style="color:#aaa;">5</div><div class="xc wf" style="color:#aaa;font-style:italic;">... MCR_B|129|M51 not found — but HUM|129|M51 (blue) is a close match ...</div>';
+  g.appendChild(note);
+}
+function ch6_goNPP(){markDone(0);ch6Show(2);buildCh6Grid(false);document.getElementById('ch6-p2-banner').innerHTML='Click <strong>Note Pre-Processor → Import from Drive</strong>. Click any sheet tab to learn what it does.';}
+function ch6_goDenial(){markDone(0);ch6Show('1b');buildCh6DenialGrid();}
+function ch6_showTab(tab){
+  const info=CH6_TAB_INFO[tab];if(!info)return;
+  // Update active tab styling
+  ['intake','pr','ps','ih','er','db'].forEach(t=>{
+    const el=document.getElementById('ch6-tab-'+t);
+    if(el)el.className='gs-tab'+(t===tab?' on':'');
+  });
+  document.getElementById('ch6-tab-title').textContent=info.title;
+  document.getElementById('ch6-tab-body').innerHTML=info.body;
+  document.getElementById('ov-ch6-tab').classList.add('open');
+}
+function ch6_npmenu(){document.getElementById('dd-ch6-np').classList.toggle('open');markDone(1);}
+function ch6_prmenu(){document.getElementById('dd-ch6-pr').classList.toggle('open');}
+function ch6_import(){closeAllDd();document.getElementById('ov-ch6-import').classList.add('open');markDone(2);}
+function ch6_runImport(){document.getElementById('ch6-imp-btns').style.display='none';document.getElementById('ch6-imp-run').style.display='block';markDone(2);setTimeout(()=>{document.getElementById('ch6-imp-run').style.display='none';document.getElementById('ch6-imp-done').style.display='block';},1400);}
+function ch6_closeImport(){closeOv('ov-ch6-import');buildCh6Grid(true);document.getElementById('ch6-p2-banner').innerHTML='Note imported! Click <strong>Note Pre-Processor → Process All Queued Rows</strong>.';toast('Imported!');}
+function ch6_process(){closeAllDd();markDone(3);setTimeout(()=>{toast('Processed! Switching to Parsed_Review...');setTimeout(()=>{ch6Show(3);markDone(4);},600);},400);}
+function ch6_gemini(){closeAllDd();document.getElementById('ov-ch6-gemini').classList.add('open');}
+function ch6_approve(){closeAllDd();document.getElementById('ov-ch6-approve').classList.add('open');markDone(5);}
+function ch6_confirmApprove(){closeOv('ov-ch6-approve');setTimeout(()=>document.getElementById('ov-ch6-pushed').classList.add('open'),300);markDone(6);}
+function ch6_afterPush(){closeOv('ov-ch6-pushed');goChapter(7);}
+// CH7
+function ch7Reset(){
+  document.getElementById('ch7-pre').style.display='block';document.getElementById('ch7-post').style.display='none';
+  document.getElementById('ch7-title').textContent='⚙️ Re-run Decision Engine';
+  document.getElementById('ch7-sub').textContent='New rule in Denial_Lookup — re-run to apply to all existing claims.';
+  document.getElementById('ch7-banner').innerHTML='Click <strong>AR Engine → Run Decision Engine</strong> to apply the new rule.';
+}
+function ch7_menu(){document.getElementById('dd-ch7').classList.toggle('open');markDone(0);}
+function ch7_run(){
+  closeAllDd();markDone(0);markDone(1);
+  document.getElementById('ch7-banner').textContent='Engine running — applying new rules...';
+  setTimeout(()=>{
+    document.getElementById('ch7-pre').style.display='none';document.getElementById('ch7-post').style.display='block';
+    document.getElementById('ch7-title').textContent='✅ Rule Now Active!';
+    document.getElementById('ch7-sub').textContent='MCR_B|129| now matches Coding / Modifier / Bundling.';
+    document.getElementById('ch7-banner').innerHTML='✅ P101456783 now shows correct guidance.';
+    document.getElementById('ch7-cr-tab').textContent='Claim_Resolver ✓';
+    markDone(2);markDone(3);toast('Rule is now active!');
+  },2000);
+}
+window.addEventListener('load',()=>{buildCh1List();buildCh1Grid('old');buildCh6Grid(false);goChapter(0);});
+</script>
+</body>
+</html>
